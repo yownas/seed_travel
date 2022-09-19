@@ -13,30 +13,36 @@ class Script(scripts.Script):
         return not is_img2img
 
     def ui(self, is_img2img):
-        info = gr.HTML("<p style=\"margin-bottom:0.75em\">Samplers that seem to work well are: Euler, LMS, Heun, DPM2 & DDIM.</p>")
-        dest_seed = gr.Textbox(label="Destination seed", lines=1)
+        info = gr.HTML("<p style=\"margin-bottom:0.75em\">Samplers that work well are: Euler, LMS, Heun, DPM2 & DDIM. A Batch Count of 1 is recommended.</p>")
+        dest_seed = gr.Textbox(label="Destination seed(s)", lines=1)
         steps = gr.Textbox(label="Steps", lines=1)
 
         return [dest_seed, steps]
 
     def run(self, p, dest_seed, steps):
-        # TODO: Force Batch Count to 1?
-        # TODO: Fix filename...somehow
-        # TODO: support for multiple dest_seed
+        initial_info = None
         images = []
-        for i in range(int(steps) + 1):
-            print(f"Step {i} of {int(steps) + 1}\n")
-            # This does not seem to work for all samplers.
-            p.subseed = int(dest_seed)
-            p.subseed_strength= float(i/float(steps))
-            proc = process_images(p)
-            images += proc.images
 
-        processed = Processed(p, images, p.seed, p.subseed, f"Traveled from {p.seed} to {dest_seed} in {steps} steps.")
+        start_seed = p.seed
+        seeds = [int(x.strip()) for x in dest_seed.split(",")]
+        print(f"Generating {((int(steps)) * len(seeds)) + 1} images.")
+        for next_seed in seeds:
+            for i in range(int(steps)):
+                p.seed = start_seed
+                p.subseed = next_seed
+                p.subseed_strength = float(i/float(steps))
+                proc = process_images(p)
+                if initial_info is None:
+                    initial_info = proc.info
+                images += proc.images
+            start_seed = next_seed
+        p.subseed_strength = 1.0
+        proc = process_images(p)
+        images += proc.images
+
+        processed = Processed(p, images, p.seed, initial_info)
 
         return processed
 
     def describe(self):
-        return "Travel between two seeds and create a picture at each step."
-
-
+        return "Travel between two (or more) seeds and create a picture at each step."
