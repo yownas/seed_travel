@@ -13,7 +13,7 @@ class Script(scripts.Script):
         return not is_img2img
 
     def ui(self, is_img2img):
-        # code = gr.Textbox(label="Python code", visible=False, lines=1)
+        info = gr.HTML("<p style=\"margin-bottom:0.75em\">Samplers that seem to work well are: Euler, LMS, Heun, DPM2 & DDIM.</p>")
         dest_seed = gr.Textbox(label="Destination seed", lines=1)
         steps = gr.Textbox(label="Steps", lines=1)
 
@@ -22,9 +22,10 @@ class Script(scripts.Script):
     def run(self, p, dest_seed, steps):
         # TODO: Force Batch Count to 1?
         # TODO: Fix filename...somehow
+        # TODO: support for multiple dest_seed
         images = []
         for i in range(int(steps) + 1):
-            print(f"Step {i} of {int(steps) + 1}")
+            print(f"Step {i} of {int(steps) + 1}\n")
             # This does not seem to work for all samplers.
             p.subseed = int(dest_seed)
             p.subseed_strength= float(i/float(steps))
