@@ -13,7 +13,6 @@ class Script(scripts.Script):
         return not is_img2img
 
     def ui(self, is_img2img):
-        info = gr.HTML("<p style=\"margin-bottom:0.75em\">Samplers that work well are: Euler, LMS, Heun, DPM2 & DDIM. A Batch Count of 1 is recommended.</p>")
         dest_seed = gr.Textbox(label="Destination seed(s) (Comma separated)", lines=1)
         steps = gr.Textbox(label="Steps", lines=1)
 
