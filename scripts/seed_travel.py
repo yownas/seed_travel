@@ -36,7 +36,9 @@ class Script(scripts.Script):
                     initial_info = proc.info
                 images += proc.images
             start_seed = next_seed
-        p.subseed_strength = 1.0
+        p.seed = p.subseed
+        p.subseed = None
+        p.subseed_strength = 0.0
         proc = process_images(p)
         images += proc.images
 
