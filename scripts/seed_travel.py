@@ -14,7 +14,7 @@ class Script(scripts.Script):
 
     def ui(self, is_img2img):
         info = gr.HTML("<p style=\"margin-bottom:0.75em\">Samplers that work well are: Euler, LMS, Heun, DPM2 & DDIM. A Batch Count of 1 is recommended.</p>")
-        dest_seed = gr.Textbox(label="Destination seed(s)", lines=1)
+        dest_seed = gr.Textbox(label="Destination seed(s) (Comma separated)", lines=1)
         steps = gr.Textbox(label="Steps", lines=1)
 
         return [dest_seed, steps]
