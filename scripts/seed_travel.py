@@ -1,7 +1,7 @@
 import modules.scripts as scripts
 import gradio as gr
 
-from modules.processing import Processed, process_images
+from modules.processing import Processed, process_images, fix_seed
 from modules.shared import opts, cmd_opts, state
 
 
@@ -26,9 +26,10 @@ class Script(scripts.Script):
         seeds = [int(x.strip()) for x in dest_seed.split(",")]
         print(f"Generating {((int(steps)) * len(seeds)) + 1} images.")
         for next_seed in seeds:
+            p.seed = start_seed
+            p.subseed = next_seed
+            fix_seed(p)
             for i in range(int(steps)):
-                p.seed = start_seed
-                p.subseed = next_seed
                 p.subseed_strength = float(i/float(steps))
                 proc = process_images(p)
                 if initial_info is None:
