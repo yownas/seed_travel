@@ -35,7 +35,7 @@ class Script(scripts.Script):
                 if initial_info is None:
                     initial_info = proc.info
                 images += proc.images
-            start_seed = next_seed
+            start_seed = p.subseed
         p.seed = p.subseed
         p.subseed = None
         p.subseed_strength = 0.0
