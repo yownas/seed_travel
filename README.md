@@ -8,3 +8,8 @@ Will let you pick two seeds (or more) and then create a number of images while i
 
 Samplers that work well are: Euler (sometimes), LMS, Heun, DPM2 & DDIM. A Batch Count of 1 is recommended.
 
+# Example:
+![kitten_example](https://user-images.githubusercontent.com/13150150/191132820-aeb80b3c-4244-4905-b49d-3bab52ee75ff.png)
+
+# Result after making video of the images.
+https://user-images.githubusercontent.com/13150150/191132919-3d594854-7045-4c48-8e61-f5a0a117035a.mp4
