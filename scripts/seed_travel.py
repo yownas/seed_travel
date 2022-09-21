@@ -18,8 +18,9 @@ class Script(scripts.Script):
         dest_seed = gr.Textbox(label="Destination seed(s) (Comma separated)", lines=1)
         steps = gr.Number(label="Steps", value=10)
         save_video = gr.Checkbox(label='Save results as video', value=True)
+        video_fps = gr.Number(label='Frames per second', value=30)
 
-        return [dest_seed, steps, unsinify, save_video]
+        return [dest_seed, steps, unsinify, save_video, video_fps]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -39,7 +40,7 @@ class Script(scripts.Script):
                 pass
         return result + 1
 
-    def run(self, p, dest_seed, steps, unsinify, save_video):
+    def run(self, p, dest_seed, steps, unsinify, save_video, video_fps):
         initial_info = None
         images = []
 
@@ -77,7 +78,7 @@ class Script(scripts.Script):
         if save_video:
             import moviepy.video.io.ImageSequenceClip as ImageSequenceClip
             import numpy as np
-            clip = ImageSequenceClip.ImageSequenceClip([np.asarray(i) for i in images], fps=30)
+            clip = ImageSequenceClip.ImageSequenceClip([np.asarray(i) for i in images], fps=video_fps)
             clip.write_videofile(os.path.join(travel_path, f"travel-{travel_number:05}.mp4"), verbose=False, logger=None)
 
         processed = Processed(p, images, p.seed, initial_info)
