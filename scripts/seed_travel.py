@@ -50,14 +50,13 @@ class Script(scripts.Script):
         travel_path = os.path.join(travel_path, f"{travel_number:05}")
         p.outpath_samples = travel_path
 
-        start_seed = p.seed
-        seeds = [int(x.strip()) for x in dest_seed.split(",")]
-        total_images = int(steps) * len(seeds) + 1
+        seeds = [p.seed] + [int(x.strip()) for x in dest_seed.split(",")]
+        total_images = int(steps) * len(seeds)
         print(f"Generating {total_images} images.")
         state.job_count = total_images # Set the job count to the total number of images to be generated
-        for next_seed in seeds:
-            p.seed = start_seed
-            p.subseed = next_seed
+        for i, next_seed in enumerate(seeds):
+            p.seed = next_seed
+            p.subseed = seeds[i+1] if i+1 < len(seeds) else seeds[0]
             fix_seed(p)
             for i in range(int(steps)):
                 if unsinify:
@@ -69,12 +68,6 @@ class Script(scripts.Script):
                 if initial_info is None:
                     initial_info = proc.info
                 images += proc.images
-            start_seed = p.subseed
-        p.seed = p.subseed
-        p.subseed = None
-        p.subseed_strength = 0.0
-        proc = process_images(p)
-        images += proc.images
 
         if save_video:
             import moviepy.video.io.ImageSequenceClip as ImageSequenceClip
