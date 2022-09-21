@@ -60,10 +60,14 @@ class Script(scripts.Script):
         p.extra_generation_params["Travel steps"] = steps
         p.extra_generation_params["Destination seeds"] = str(seeds)
 
-        for i, next_seed in enumerate(seeds):
-            p.seed = next_seed
+        for i in range(len(seeds)):
+            p.seed = seeds[i]
             p.subseed = seeds[i+1] if i+1 < len(seeds) else seeds[0]
             fix_seed(p)
+            # We want to save seeds since they might have been altered by fix_seed()
+            seeds[i] = p.seed
+            if i+1 < len(seeds): seeds[i+1] = p.subseed
+
             for i in range(int(steps)):
                 if unsinify:
                     x = float(i/float(steps))
