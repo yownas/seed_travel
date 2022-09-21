@@ -11,7 +11,7 @@ class Script(scripts.Script):
         return "Seed travel"
 
     def show(self, is_img2img):
-        return not is_img2img
+        return True
 
     def ui(self, is_img2img):
         unsinify = gr.Checkbox(label='Reduce effect of sin() during interpolation', value=True)
