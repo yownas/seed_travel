@@ -17,8 +17,9 @@ class Script(scripts.Script):
         unsinify = gr.Checkbox(label='Reduce effect of sin() during interpolation', value=True)
         dest_seed = gr.Textbox(label="Destination seed(s) (Comma separated)", lines=1)
         steps = gr.Number(label="Steps", value=10)
+        save_video = gr.Checkbox(label='Save results as video', value=True)
 
-        return [dest_seed, steps, unsinify]
+        return [dest_seed, steps, unsinify, save_video]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -38,7 +39,7 @@ class Script(scripts.Script):
                 pass
         return result + 1
 
-    def run(self, p, dest_seed, steps, unsinify):
+    def run(self, p, dest_seed, steps, unsinify, save_video):
         initial_info = None
         images = []
 
@@ -74,6 +75,12 @@ class Script(scripts.Script):
         p.subseed_strength = 0.0
         proc = process_images(p)
         images += proc.images
+
+        if save_video:
+            import moviepy.video.io.ImageSequenceClip as ImageSequenceClip
+            import numpy as np
+            clip = ImageSequenceClip.ImageSequenceClip([np.asarray(i) for i in images], fps=30)
+            clip.write_videofile(os.path.join(travel_path, f"travel-{travel_number:05}.mp4"), verbose=False, logger=None)
 
         processed = Processed(p, images, p.seed, initial_info)
 
