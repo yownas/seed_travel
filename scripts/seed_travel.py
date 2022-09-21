@@ -17,10 +17,11 @@ class Script(scripts.Script):
         unsinify = gr.Checkbox(label='Reduce effect of sin() during interpolation', value=True)
         dest_seed = gr.Textbox(label="Destination seed(s) (Comma separated)", lines=1)
         steps = gr.Number(label="Steps", value=10)
+        loopback = gr.Checkbox(label='Loop back to initial seed', value=True)
         save_video = gr.Checkbox(label='Save results as video', value=True)
         video_fps = gr.Number(label='Frames per second', value=30)
 
-        return [dest_seed, steps, unsinify, save_video, video_fps]
+        return [dest_seed, steps, unsinify, loopback, save_video, video_fps]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -40,7 +41,7 @@ class Script(scripts.Script):
                 pass
         return result + 1
 
-    def run(self, p, dest_seed, steps, unsinify, save_video, video_fps):
+    def run(self, p, dest_seed, steps, unsinify, loopback, save_video, video_fps):
         initial_info = None
         images = []
 
@@ -52,7 +53,7 @@ class Script(scripts.Script):
         p.outpath_samples = travel_path
 
         seeds = [p.seed] + [int(x.strip()) for x in dest_seed.split(",")]
-        total_images = int(steps) * len(seeds)
+        total_images = (int(steps) * len(seeds)) - (0 if loopback else (int(steps) - 1))
         print(f"Generating {total_images} images.")
 
         # Set generation helpers
@@ -68,7 +69,8 @@ class Script(scripts.Script):
             seeds[i] = p.seed
             if i+1 < len(seeds): seeds[i+1] = p.subseed
 
-            for i in range(int(steps)):
+            numsteps = 1 if not loopback and i+1 == len(seeds) else int(steps) # Number of steps is 1 if we aren't looping at the last seed
+            for i in range(numsteps):
                 if unsinify:
                     x = float(i/float(steps))
                     p.subseed_strength = x + (0.1 * math.sin(x*2*math.pi))
