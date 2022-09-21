@@ -53,7 +53,12 @@ class Script(scripts.Script):
         seeds = [p.seed] + [int(x.strip()) for x in dest_seed.split(",")]
         total_images = int(steps) * len(seeds)
         print(f"Generating {total_images} images.")
-        state.job_count = total_images # Set the job count to the total number of images to be generated
+
+        # Set generation helpers
+        state.job_count = total_images
+        p.extra_generation_params["Travel steps"] = steps
+        p.extra_generation_params["Destination seeds"] = str(seeds)
+
         for i, next_seed in enumerate(seeds):
             p.seed = next_seed
             p.subseed = seeds[i+1] if i+1 < len(seeds) else seeds[0]
