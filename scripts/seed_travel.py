@@ -58,8 +58,6 @@ class Script(scripts.Script):
 
         # Set generation helpers
         state.job_count = total_images
-        p.extra_generation_params["Travel steps"] = steps
-        p.extra_generation_params["Destination seeds"] = str(seeds)
 
         for i in range(len(seeds)):
             p.seed = seeds[i]
