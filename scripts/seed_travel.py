@@ -2,6 +2,7 @@ import os
 import modules.scripts as scripts
 import gradio as gr
 import math
+import random
 from modules.processing import Processed, process_images, fix_seed
 from modules.shared import opts, cmd_opts, state
 
@@ -15,19 +16,20 @@ class Script(scripts.Script):
 
     def ui(self, is_img2img):
         unsinify = gr.Checkbox(label='Reduce effect of sin() during interpolation', value=True)
+        rnd_seed = gr.Checkbox(label='Use Random seeds', value=False)
+        seed_count = gr.Number(label="Number of random seed(s) (Only used if random seeds is checked)", value=4)
         dest_seed = gr.Textbox(label="Destination seed(s) (Comma separated)", lines=1)
         steps = gr.Number(label="Steps", value=10)
         loopback = gr.Checkbox(label='Loop back to initial seed', value=True)
         save_video = gr.Checkbox(label='Save results as video', value=True)
         video_fps = gr.Number(label='Frames per second', value=30)
 
-        return [dest_seed, steps, unsinify, loopback, save_video, video_fps]
+        return [rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps]
 
     def get_next_sequence_number(path):
         from pathlib import Path
         """
         Determines and returns the next sequence number to use when saving an image in the specified directory.
-
         The sequence starts at 0.
         """
         result = -1
@@ -41,7 +43,7 @@ class Script(scripts.Script):
                 pass
         return result + 1
 
-    def run(self, p, dest_seed, steps, unsinify, loopback, save_video, video_fps):
+    def run(self, p, rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps):
         initial_info = None
         images = []
 
@@ -52,7 +54,18 @@ class Script(scripts.Script):
         travel_path = os.path.join(travel_path, f"{travel_number:05}")
         p.outpath_samples = travel_path
 
-        seeds = [p.seed] + [int(x.strip()) for x in dest_seed.split(",")]
+        # Random seeds
+        if rnd_seed == True:
+            seeds = []          
+            s = 0          
+            while (s < seed_count):
+                seeds.append(random.randint(0,2147483647))
+                #print(seeds)
+                s = s + 1
+        # Manual seeds        
+        else:
+            seeds = [p.seed] + [int(x.strip()) for x in dest_seed.split(",")]
+        
         total_images = (int(steps) * len(seeds)) - (0 if loopback else (int(steps) - 1))
         print(f"Generating {total_images} images.")
 
