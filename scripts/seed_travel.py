@@ -64,6 +64,10 @@ class Script(scripts.Script):
         initial_info = None
         images = []
 
+        if rnd_seed and (not seed_count or int(seed_count) < 2):
+            print(f"You need at least 2 random seeds.")
+            return Processed(p, images, p.seed)
+
         if not rnd_seed and not dest_seed:
             print(f"No destination seeds were set.")
             return Processed(p, images, p.seed)
