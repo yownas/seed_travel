@@ -33,6 +33,7 @@ class Script(scripts.Script):
                 rnd_seed = gr.Checkbox(label='Only use Random seeds', value=False)
                 seed_count = gr.Number(label='Number of random seed(s)', value=4)
                 unsinify = gr.Checkbox(label='Reduce effect of sin() during interpolation', value=True)
+                show_images = gr.Checkbox(label='Show generated images in ui', value=True)
             with gr.Box() as seed_travel_box2:
                 loopback = gr.Checkbox(label='Loop back to initial seed', value=False)
                 save_video = gr.Checkbox(label='Save results as video', value=True)
@@ -40,7 +41,7 @@ class Script(scripts.Script):
 
         seed_travel_toggle_extra.change(change_visibility, show_progress=False, inputs=[seed_travel_toggle_extra], outputs=seed_travel_extra)        
 
-        return [rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, seed_travel_toggle_extra]
+        return [rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, seed_travel_toggle_extra, show_images]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -59,9 +60,17 @@ class Script(scripts.Script):
                 pass
         return result + 1
 
-    def run(self, p, rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, seed_travel_toggle):
+    def run(self, p, rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, seed_travel_toggle, show_images):
         initial_info = None
         images = []
+
+        if not rnd_seed and not dest_seed:
+            print(f"No destination seeds were set.")
+            return Processed(p, images, p.seed)
+
+        if not save_video and not show_images:
+            print(f"Nothing to do. You should save the results as a video or show the generated images.")
+            return Processed(p, images, p.seed)
 
         # Custom seed travel saving
         travel_path = os.path.join(p.outpath_samples, "travels")
@@ -114,7 +123,7 @@ class Script(scripts.Script):
             clip = ImageSequenceClip.ImageSequenceClip([np.asarray(i) for i in images], fps=video_fps)
             clip.write_videofile(os.path.join(travel_path, f"travel-{travel_number:05}.mp4"), verbose=False, logger=None)
 
-        processed = Processed(p, images, p.seed, initial_info)
+        processed = Processed(p, images if show_images else [], p.seed, initial_info)
 
         return processed
 
