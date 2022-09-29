@@ -78,10 +78,10 @@ class Script(scripts.Script):
             return Processed(p, images, p.seed)
 
         if save_video:
-            if 'moviepy' in sys.modules:
+            import numpy as np
+            try:
                 import moviepy.video.io.ImageSequenceClip as ImageSequenceClip
-                import numpy as np
-            else:
+            except ImportError:
                 print(f"moviepy python module not installed. Will not be able to generate video.")
                 return Processed(p, images, p.seed)
 
