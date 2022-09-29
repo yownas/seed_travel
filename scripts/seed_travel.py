@@ -1,4 +1,5 @@
 import os
+import sys
 import modules.scripts as scripts
 import gradio as gr
 import math
@@ -76,6 +77,14 @@ class Script(scripts.Script):
             print(f"Nothing to do. You should save the results as a video or show the generated images.")
             return Processed(p, images, p.seed)
 
+        if save_video:
+            if 'moviepy' in sys.modules:
+                import moviepy.video.io.ImageSequenceClip as ImageSequenceClip
+                import numpy as np
+            else:
+                print(f"moviepy python module not installed. Will not be able to generate video.")
+                return Processed(p, images, p.seed)
+
         # Custom seed travel saving
         travel_path = os.path.join(p.outpath_samples, "travels")
         os.makedirs(travel_path, exist_ok=True)
@@ -125,8 +134,6 @@ class Script(scripts.Script):
                 images += proc.images
 
         if save_video:
-            import moviepy.video.io.ImageSequenceClip as ImageSequenceClip
-            import numpy as np
             clip = ImageSequenceClip.ImageSequenceClip([np.asarray(i) for i in images], fps=video_fps)
             clip.write_videofile(os.path.join(travel_path, f"travel-{travel_number:05}.mp4"), verbose=False, logger=None)
 
