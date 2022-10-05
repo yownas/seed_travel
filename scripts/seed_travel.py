@@ -31,6 +31,7 @@ class Script(scripts.Script):
         with gr.Row(visible=False) as seed_travel_extra_row:
             seed_travel_extra.append(seed_travel_extra_row)
             with gr.Box() as seed_travel_box1:
+                compare_paths = gr.Checkbox(label='Compare paths (travel from 1st seed to each destination)', value=False)
                 rnd_seed = gr.Checkbox(label='Only use Random seeds', value=False)
                 seed_count = gr.Number(label='Number of random seed(s)', value=4)
                 unsinify = gr.Checkbox(label='Reduce effect of sin() during interpolation', value=True)
@@ -42,7 +43,7 @@ class Script(scripts.Script):
 
         seed_travel_toggle_extra.change(change_visibility, show_progress=False, inputs=[seed_travel_toggle_extra], outputs=seed_travel_extra)        
 
-        return [rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, seed_travel_toggle_extra, show_images]
+        return [rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, seed_travel_toggle_extra, show_images, compare_paths]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -61,7 +62,7 @@ class Script(scripts.Script):
                 pass
         return result + 1
 
-    def run(self, p, rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, seed_travel_toggle, show_images):
+    def run(self, p, rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, seed_travel_toggle, show_images, compare_paths):
         initial_info = None
         images = []
 
@@ -95,6 +96,9 @@ class Script(scripts.Script):
         # Force Batch Count to 1.
         p.n_iter = 1
 
+        if compare_paths:
+            loopback = False
+
         # Random seeds
         if rnd_seed == True:
             seeds = []          
@@ -113,15 +117,19 @@ class Script(scripts.Script):
         # Set generation helpers
         state.job_count = total_images
 
-        for i in range(len(seeds)):
-            p.seed = seeds[i]
-            p.subseed = seeds[i+1] if i+1 < len(seeds) else seeds[0]
+        for s in range(len(seeds)):
+            if not compare_paths:
+                p.seed = seeds[s]
+            p.subseed = seeds[s+1] if s+1 < len(seeds) else seeds[0]
             fix_seed(p)
             # We want to save seeds since they might have been altered by fix_seed()
-            seeds[i] = p.seed
-            if i+1 < len(seeds): seeds[i+1] = p.subseed
+            seeds[s] = p.seed
+            if s+1 < len(seeds): seeds[s+1] = p.subseed
 
-            numsteps = 1 if not loopback and i+1 == len(seeds) else int(steps) # Number of steps is 1 if we aren't looping at the last seed
+            numsteps = 1 if not loopback and s+1 == len(seeds) else int(steps) # Number of steps is 1 if we aren't looping at the last seed
+            if compare_paths and numsteps == 1:
+                numsteps = 0
+            step_images = []
             for i in range(numsteps):
                 if unsinify:
                     x = float(i/float(steps))
@@ -131,10 +139,15 @@ class Script(scripts.Script):
                 proc = process_images(p)
                 if initial_info is None:
                     initial_info = proc.info
+                step_images += proc.images
                 images += proc.images
 
-        if save_video:
-            clip = ImageSequenceClip.ImageSequenceClip([np.asarray(i) for i in images], fps=video_fps)
+            if save_video and compare_paths and numsteps > 1:
+                clip = ImageSequenceClip.ImageSequenceClip([np.asarray(t) for t in step_images], fps=video_fps)
+                clip.write_videofile(os.path.join(travel_path, f"travel-{travel_number:05}-{s:04}.mp4"), verbose=False, logger=None)
+
+        if save_video and not compare_paths:
+            clip = ImageSequenceClip.ImageSequenceClip([np.asarray(t) for t in images], fps=video_fps)
             clip.write_videofile(os.path.join(travel_path, f"travel-{travel_number:05}.mp4"), verbose=False, logger=None)
 
         processed = Processed(p, images if show_images else [], p.seed, initial_info)
