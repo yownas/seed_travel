@@ -19,9 +19,9 @@ class Script(scripts.Script):
         seed_travel_extra = []
 
         dest_seed = gr.Textbox(label='Destination seed(s) (Comma separated)', lines=1)
-        rnd_seed = gr.Checkbox(label='Only use Random seeds', value=False)
+        rnd_seed = gr.Checkbox(label='Only use Random seeds (Unless comparing paths)', value=False)
         seed_count = gr.Number(label='Number of random seed(s)', value=4)
-        compare_paths = gr.Checkbox(label='Compare paths (travel from 1st seed to each destination)', value=False)
+        compare_paths = gr.Checkbox(label='Compare paths (Separate travels from 1st seed to each destination)', value=False)
         steps = gr.Number(label='Steps', value=10)
         loopback = gr.Checkbox(label='Loop back to initial seed', value=False)
         save_video = gr.Checkbox(label='Save results as video', value=True)
@@ -88,11 +88,14 @@ class Script(scripts.Script):
         # Random seeds
         if rnd_seed == True:
             seeds = []          
+            if compare_paths and not p.seed == None:
+                seeds.append(p.seed)
             s = 0          
             while (s < seed_count):
                 seeds.append(random.randint(0,2147483647))
                 #print(seeds)
                 s = s + 1
+            p.seed = seeds[0]
         # Manual seeds        
         else:
             seeds = [p.seed] + [int(x.strip()) for x in dest_seed.split(",")]
