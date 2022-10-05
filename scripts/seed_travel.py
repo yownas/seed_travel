@@ -4,6 +4,7 @@ import modules.scripts as scripts
 import gradio as gr
 import math
 import random
+import re
 from modules.processing import Processed, process_images, fix_seed
 from modules.shared import opts, cmd_opts, state
 
@@ -72,6 +73,10 @@ class Script(scripts.Script):
                 print(f"moviepy python module not installed. Will not be able to generate video.")
                 return Processed(p, images, p.seed)
 
+        # Remove seeds within () to help testing
+        dest_seed = re.sub('\([^)]*\)', ',', dest_seed)
+        dest_seed = re.sub(',,*', ',', dest_seed)
+
         # Custom seed travel saving
         travel_path = os.path.join(p.outpath_samples, "travels")
         os.makedirs(travel_path, exist_ok=True)
@@ -95,10 +100,11 @@ class Script(scripts.Script):
                 seeds.append(random.randint(0,2147483647))
                 #print(seeds)
                 s = s + 1
-            p.seed = seeds[0]
         # Manual seeds        
         else:
-            seeds = [p.seed] + [int(x.strip()) for x in dest_seed.split(",")]
+            seeds = [] if p.seed == None else [p.seed]
+            seeds = seeds + [int(x.strip()) for x in dest_seed.split(",")]
+        p.seed = seeds[0]
         
         total_images = (int(steps) * len(seeds)) - (0 if loopback else (int(steps) - 1))
         print(f"Generating {total_images} images.")
