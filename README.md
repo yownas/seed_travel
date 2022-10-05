@@ -21,6 +21,24 @@ If we imagine all the possible noises as a map, a seed could be seen as one sing
 
 So, interpolating between the noise from two seeds will not only look cool as a video, you will also get images you might never have seen.
 
+# Usage
+
+`Destination seed(s)`: Seeds to travel to from `Seed`. If initial seed is empty, the first destination seed will be chosen as start seed. Seeds placed between parentheses will be ignored. (Might be useful while testing.) 
+
+`Only use Random seeds`: Let you set `Number of random seeds` instead of typing them manually. `Seed` will be ignored unless comparing paths (see below).
+
+`Steps`: Number of images to generate between each seed.
+
+`Loop back to Initial seed`: When reaching the end, generate images to get back to the first seed.
+
+`Save results as video`: Makes videos.
+
+`Frames per second`: The fps of the video.
+
+`Show generated images in ui`: Disable this if you generate a lot of steps to make life easier for your browser.
+
+`"Hug the middle" during interpolation`: Left over from an old experiment. Makes the interpolation go a little bit faster at the start and at the end. May sometimes produce smoother video, most often not.
+
 # Example:
 ![kitten_example](https://user-images.githubusercontent.com/13150150/191132820-aeb80b3c-4244-4905-b49d-3bab52ee75ff.png)
 
