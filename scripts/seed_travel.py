@@ -62,8 +62,8 @@ class Script(scripts.Script):
             return Processed(p, images, p.seed)
 
         if not save_video and not show_images:
-            print(f"Nothing to do. You should save the results as a video or show the generated images.")
-            return Processed(p, images, p.seed)
+            print(f"Nothing to show in gui. You will find the result in the ouyput folder.")
+            #return Processed(p, images, p.seed)
 
         if save_video:
             import numpy as np
