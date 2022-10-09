@@ -113,6 +113,8 @@ class Script(scripts.Script):
         state.job_count = total_images
 
         for s in range(len(seeds)):
+            if state.interrupted:
+                break
             if not compare_paths:
                 p.seed = seeds[s]
             p.subseed = seeds[s+1] if s+1 < len(seeds) else seeds[0]
@@ -126,6 +128,9 @@ class Script(scripts.Script):
                 numsteps = 0
             step_images = []
             for i in range(numsteps):
+                if state.interrupted:
+                    break
+
                 if unsinify:
                     x = float(i/float(steps))
                     p.subseed_strength = x + (0.1 * math.sin(x*2*math.pi))
