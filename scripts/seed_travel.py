@@ -8,7 +8,6 @@ import re
 from modules.processing import Processed, process_images, fix_seed
 from modules.shared import opts, cmd_opts, state
 
-
 class Script(scripts.Script):
     def title(self):
         return "Seed travel"
@@ -29,8 +28,9 @@ class Script(scripts.Script):
         video_fps = gr.Number(label='Frames per second', value=30)
         show_images = gr.Checkbox(label='Show generated images in ui', value=True)
         unsinify = gr.Checkbox(label='"Hug the middle" during interpolation', value=False)
+        allowdefsampler = gr.Checkbox(label='Allow the default Euler a Sampling method. (Does not produce good results)', value=False)
 
-        return [rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths]
+        return [rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths, allowdefsampler]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -49,9 +49,13 @@ class Script(scripts.Script):
                 pass
         return result + 1
 
-    def run(self, p, rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths):
+    def run(self, p, rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths, allowdefsampler):
         initial_info = None
         images = []
+
+        if not allowdefsampler and p.sampler_index == 0:
+            print(f"You seem to be using Euler a, it will not produce good results.")
+            return Processed(p, images, p.seed)
 
         if rnd_seed and (not seed_count or int(seed_count) < 2):
             print(f"You need at least 2 random seeds.")
