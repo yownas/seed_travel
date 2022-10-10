@@ -84,8 +84,9 @@ class Script(scripts.Script):
         travel_path = os.path.join(travel_path, f"{travel_number:05}")
         p.outpath_samples = travel_path
 
-        # Force Batch Count to 1.
+        # Force Batch Count and Batch Size to 1.
         p.n_iter = 1
+        p.batch_size = 1
 
         if compare_paths:
             loopback = False
