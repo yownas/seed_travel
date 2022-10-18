@@ -26,11 +26,12 @@ class Script(scripts.Script):
         loopback = gr.Checkbox(label='Loop back to initial seed', value=False)
         save_video = gr.Checkbox(label='Save results as video', value=True)
         video_fps = gr.Number(label='Frames per second', value=30)
+        bump_seed = gr.Slider(label='Bump seed if > 0 (Compare paths but only one image. No video)', value=0.0, minimum=0, maximum=1, step=0.01)
         show_images = gr.Checkbox(label='Show generated images in ui', value=True)
         unsinify = gr.Checkbox(label='"Hug the middle" during interpolation', value=False)
         allowdefsampler = gr.Checkbox(label='Allow the default Euler a Sampling method. (Does not produce good results)', value=False)
 
-        return [rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths, allowdefsampler]
+        return [rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths, allowdefsampler, bump_seed]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -49,9 +50,15 @@ class Script(scripts.Script):
                 pass
         return result + 1
 
-    def run(self, p, rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths, allowdefsampler):
+    def run(self, p, rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths, allowdefsampler, bump_seed):
         initial_info = None
         images = []
+
+        # If we are just bumping seeds, ignore compare_paths and save_video
+        if bump_seed > 0:
+            compare_paths = False
+            save_video = False
+            allowdefsampler = True # Since we aren't trying to get to a target seed, this will be ok.
 
         if not allowdefsampler and p.sampler_index == 0:
             print(f"You seem to be using Euler a, it will not produce good results.")
@@ -92,7 +99,7 @@ class Script(scripts.Script):
         p.n_iter = 1
         p.batch_size = 1
 
-        if compare_paths:
+        if compare_paths or bump_seed > 0:
             loopback = False
 
         # Random seeds
@@ -120,7 +127,7 @@ class Script(scripts.Script):
         for s in range(len(seeds)):
             if state.interrupted:
                 break
-            if not compare_paths:
+            if not (compare_paths or bump_seed):
                 p.seed = seeds[s]
             p.subseed = seeds[s+1] if s+1 < len(seeds) else seeds[0]
             fix_seed(p)
@@ -131,12 +138,16 @@ class Script(scripts.Script):
             numsteps = 1 if not loopback and s+1 == len(seeds) else int(steps) # Number of steps is 1 if we aren't looping at the last seed
             if compare_paths and numsteps == 1:
                 numsteps = 0
+            if bump_seed > 0:
+                numsteps = 1
             step_images = []
             for i in range(numsteps):
                 if state.interrupted:
                     break
 
-                if unsinify:
+                if bump_seed > 0:
+                    p.subseed_strength = bump_seed
+                elif unsinify:
                     x = float(i/float(steps))
                     p.subseed_strength = x + (0.1 * math.sin(x*2*math.pi))
                 else:
