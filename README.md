@@ -35,6 +35,8 @@ So, interpolating between the noise from two seeds will not only look cool as a 
 
 `Frames per second`: The fps of the video.
 
+'Bump seed': If this is set higher than 0, instead of traveling to the destination seeds you will get a number of images based on the initial seed, mixed with the destination seeds. Perfect for when you have an almost perfect image but want to nudge it a little to see if you can improve it.
+
 `Show generated images in ui`: Disable this if you generate a lot of steps to make life easier for your browser.
 
 `"Hug the middle" during interpolation`: Left over from an old experiment. Makes the interpolation go a little bit faster at the start and at the end. May sometimes produce smoother video, most often not.
