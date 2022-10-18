@@ -26,7 +26,7 @@ class Script(scripts.Script):
         loopback = gr.Checkbox(label='Loop back to initial seed', value=False)
         save_video = gr.Checkbox(label='Save results as video', value=True)
         video_fps = gr.Number(label='Frames per second', value=30)
-        bump_seed = gr.Slider(label='Bump seed if > 0 (Compare paths but only one image. No video)', value=0.0, minimum=0, maximum=1, step=0.01)
+        bump_seed = gr.Slider(label='Bump seed (If > 0 do a Compare Paths but only one image. No video)', value=0.0, minimum=0, maximum=1, step=0.01)
         show_images = gr.Checkbox(label='Show generated images in ui', value=True)
         unsinify = gr.Checkbox(label='"Hug the middle" during interpolation', value=False)
         allowdefsampler = gr.Checkbox(label='Allow the default Euler a Sampling method. (Does not produce good results)', value=False)
@@ -58,6 +58,7 @@ class Script(scripts.Script):
         if bump_seed > 0:
             compare_paths = False
             save_video = False
+            steps = 1
             allowdefsampler = True # Since we aren't trying to get to a target seed, this will be ok.
 
         if not allowdefsampler and p.sampler_index == 0:
@@ -124,7 +125,7 @@ class Script(scripts.Script):
         # Set generation helpers
         state.job_count = total_images
 
-        for s in range(len(seeds)):
+        for s in range(len(seeds)-1):
             if state.interrupted:
                 break
             if not (compare_paths or bump_seed):
@@ -138,13 +139,10 @@ class Script(scripts.Script):
             numsteps = 1 if not loopback and s+1 == len(seeds) else int(steps) # Number of steps is 1 if we aren't looping at the last seed
             if compare_paths and numsteps == 1:
                 numsteps = 0
-            if bump_seed > 0:
-                numsteps = 1
             step_images = []
             for i in range(numsteps):
                 if state.interrupted:
                     break
-
                 if bump_seed > 0:
                     p.subseed_strength = bump_seed
                 elif unsinify:
