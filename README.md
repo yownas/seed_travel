@@ -45,6 +45,10 @@ So, interpolating between the noise from two seeds will not only look cool as a 
 
 The images and video (if selected) will show up in the `outputs\txt2-images\travels` folder. With a separate numbered folder for each travel you've made.
 
+# Notice:
+
+If you get an error like this `ValueError: could not convert string to float: ''` the problem might be that you have old default values stored by gradio (the library used to generate the web ui). To fix this edit the file `ui-config.json` and remove the lines starting with `"customscript/seed_travel.py/...`. This issue could also be caused by other scripts, and the simplest way to fix is to remove the lines for those scripts as well.
+
 # Example:
 ![kitten_example](https://user-images.githubusercontent.com/13150150/191132820-aeb80b3c-4244-4905-b49d-3bab52ee75ff.png)
 
