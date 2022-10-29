@@ -26,12 +26,13 @@ class Script(scripts.Script):
         loopback = gr.Checkbox(label='Loop back to initial seed', value=False)
         save_video = gr.Checkbox(label='Save results as video', value=True)
         video_fps = gr.Number(label='Frames per second', value=30)
+        lead_inout = gr.Number(label='Number of frames for lead in/out', value=0)
         bump_seed = gr.Slider(label='Bump seed (If > 0 do a Compare Paths but only one image. No video)', value=0.0, minimum=0, maximum=1, step=0.01)
         show_images = gr.Checkbox(label='Show generated images in ui', value=True)
         unsinify = gr.Checkbox(label='"Hug the middle" during interpolation', value=False)
         allowdefsampler = gr.Checkbox(label='Allow the default Euler a Sampling method. (Does not produce good results)', value=False)
 
-        return [rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths, allowdefsampler, bump_seed]
+        return [rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths, allowdefsampler, bump_seed, lead_inout]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -50,9 +51,10 @@ class Script(scripts.Script):
                 pass
         return result + 1
 
-    def run(self, p, rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths, allowdefsampler, bump_seed):
+    def run(self, p, rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths, allowdefsampler, bump_seed, lead_inout):
         initial_info = None
         images = []
+        lead_inout=int(lead_inout)
 
         # If we are just bumping seeds, ignore compare_paths and save_video
         if bump_seed > 0:
@@ -163,7 +165,7 @@ class Script(scripts.Script):
                 clip.write_videofile(os.path.join(travel_path, f"travel-{travel_number:05}-{s:04}.mp4"), verbose=False, logger=None)
 
         if save_video and not compare_paths:
-            clip = ImageSequenceClip.ImageSequenceClip([np.asarray(t) for t in images], fps=video_fps)
+            clip = ImageSequenceClip.ImageSequenceClip([np.asarray(images[0])] * lead_inout + [np.asarray(t) for t in images] + [np.asarray(images[-1])] * lead_inout , fps=video_fps)
             clip.write_videofile(os.path.join(travel_path, f"travel-{travel_number:05}.mp4"), verbose=False, logger=None)
 
         processed = Processed(p, images if show_images else [], p.seed, initial_info)
