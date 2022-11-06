@@ -7,6 +7,8 @@ Samplers that work well are: Euler, LMS, Heun, DPM2 & DDIM. (And possibly others
 
 Batch Count and Batch Size will be ignored and set to 1. Trying to generate images with Euler a will fail and print an error. If you really want to use it there is a checkbox to allow it.
 
+[Examples of what you can do](USER_EXAMPLES.md).
+
 # Installation
 1. Copy the file in the scripts-folder to the scripts-folder from https://github.com/AUTOMATIC1111/stable-diffusion-webui
 2. Add `moviepy==1.0.3` to requirements_versions.txt
