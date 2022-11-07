@@ -10,6 +10,14 @@ Batch Count and Batch Size will be ignored and set to 1. Trying to generate imag
 [Examples of what you can do](USER_EXAMPLES.md).
 
 # Installation
+
+Easiest way to install it is to:
+1. Go to the "Extensions" tab in the webui
+2. Click on the "Install from URL" tab
+3. Paste https://github.com/yownas/seed_travel.git into "URL for extension's git repository" and click install
+4. ("Optional". You will need to restart the webui for dependensies to be installed or you won't be able to generate video files.)
+
+Manual install:
 1. Copy the file in the scripts-folder to the scripts-folder from https://github.com/AUTOMATIC1111/stable-diffusion-webui
 2. Add `moviepy==1.0.3` to requirements_versions.txt
 
