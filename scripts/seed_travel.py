@@ -97,6 +97,7 @@ class Script(scripts.Script):
         travel_number = Script.get_next_sequence_number(travel_path)
         travel_path = os.path.join(travel_path, f"{travel_number:05}")
         p.outpath_samples = travel_path
+        if save_video: os.makedirs(travel_path, exist_ok=True)
 
         # Force Batch Count and Batch Size to 1.
         p.n_iter = 1
