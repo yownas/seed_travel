@@ -102,6 +102,9 @@ class Script(scripts.Script):
         p.n_iter = 1
         p.batch_size = 1
 
+        initial_prompt = p.prompt
+        initial_negative_prompt = p.negative_prompt
+
         if compare_paths or bump_seed > 0:
             loopback = False
 
@@ -154,6 +157,11 @@ class Script(scripts.Script):
                     p.subseed_strength = x + (0.1 * math.sin(x*2*math.pi))
                 else:
                     p.subseed_strength = float(i/float(steps))
+
+                # Restore prompts
+                p.prompt = initial_prompt
+                p.negative_prompt = initial_negative_prompt
+
                 proc = process_images(p)
                 if initial_info is None:
                     initial_info = proc.info
