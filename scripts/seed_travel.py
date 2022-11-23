@@ -63,8 +63,8 @@ class Script(scripts.Script):
             steps = 1
             allowdefsampler = True # Since we aren't trying to get to a target seed, this will be ok.
 
-        if not allowdefsampler and p.sampler_index == 0:
-            print(f"You seem to be using Euler a, it will not produce good results.")
+        if not allowdefsampler and p.sampler_name == 'Euler a':
+            print(f"You seem to be using Euler a, it will most likely not produce good results.")
             return Processed(p, images, p.seed)
 
         if rnd_seed and (not seed_count or int(seed_count) < 2):
