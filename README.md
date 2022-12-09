@@ -45,15 +45,15 @@ So, interpolating between the noise from two seeds will not only look cool as a 
 
 `Frames per second`: The fps of the video.
 
-'Number of frames for lead in/out': Amount of frames to be padded with a static image at the start and ending of the video. So you'll get a short pause before the video ends.
+`Number of frames for lead in/out`: Amount of frames to be padded with a static image at the start and ending of the video. So you'll get a short pause before the video ends.
 
-'Bump seed': If this is set higher than 0, instead of traveling to the destination seeds you will get a number of images based on the initial seed, mixed with the destination seeds. Perfect for when you have an almost perfect image but want to nudge it a little to see if you can improve it.
+`Bump seed`: If this is set higher than 0, instead of traveling to the destination seeds you will get a number of images based on the initial seed, mixed with the destination seeds. Perfect for when you have an almost perfect image but want to nudge it a little to see if you can improve it.
 
 `Show generated images in ui`: Disable this if you generate a lot of steps to make life easier for your browser.
 
 `"Hug the middle" during interpolation`: Left over from an old experiment. Makes the interpolation go a little bit faster at the start and at the end. May sometimes produce smoother video, most often not.
 
-'Allow the default Euler a Sampling method. (Does not produce good results)': By default Euler A is disabled since it breaks animations with more than 2 seeds. Some Samplers doesn't seem to handle Variation Seeds well, and fail when switching from one seed to another. Mostly the ones with a "a" in them. You are of course free to use them, but you might get weird skips in the animation.
+`Allow the default Euler a Sampling method. (Does not produce good results)`: By default Euler A is disabled since it breaks animations with more than 2 seeds. Some Samplers doesn't seem to handle Variation Seeds well, and fail when switching from one seed to another. Mostly the ones with a "a" in them. You are of course free to use them, but you might get weird skips in the animation.
 
 # Output
 
