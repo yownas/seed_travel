@@ -3,7 +3,9 @@ Small script for AUTOMATIC1111/stable-diffusion-webui to create images that exis
 
 Will let you pick two seeds (or more) and then create a number of images while it morph between the two points of noise generated.
 
-Samplers that work well are: Euler, LMS, Heun, DPM2 & DDIM. (And possibly others, not Euler a though.)
+Samplers that work well are: Euler, LMS, Heun, DPM2, DPM++ 2M, LMS Karras, DPM2 Karras, DPM++ 2M Karras, DDIM and PLMS
+
+[Look here for more information about issues with some samplers.](SAMPLER_TEST.md)
 
 Batch Count and Batch Size will be ignored and set to 1. Trying to generate images with Euler a will fail and print an error. If you really want to use it there is a checkbox to allow it.
 
