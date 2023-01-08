@@ -176,7 +176,7 @@ class Script(scripts.Script):
             if save_video and compare_paths and numsteps > 1:
                 clip = ImageSequenceClip.ImageSequenceClip([np.asarray(t) for t in step_images], fps=video_fps)
                 clip.write_videofile(os.path.join(travel_path, f"travel-{travel_number:05}-{s:04}.mp4"), verbose=False, logger=None)
-        
+
         if save_video and not compare_paths:
             frames = [np.asarray(images[0])] * lead_inout + [np.asarray(t) for t in images] + [np.asarray(images[-1])] * lead_inout
             clip = ImageSequenceClip.ImageSequenceClip(frames, fps=video_fps)
