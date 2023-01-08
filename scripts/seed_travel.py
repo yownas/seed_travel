@@ -127,13 +127,16 @@ class Script(scripts.Script):
             seeds.append(seeds[0])
         p.seed = seeds[0]
         
-        total_images = (int(steps) * len(seeds)) - (0 if loopback else (int(steps) - 1))
+        # note: compare_paths and loopback will not work simultaneously.
+        total_images = int(steps) * (len(seeds) - (0 if loopback else 1)) + 1 # steps * number of traveling seeds + 1 last image
+        if compare_paths:
+            total_images = (int(steps) + 1) * (len(seeds) - 1)
         print(f"Generating {total_images} images.")
 
         # Set generation helpers
         state.job_count = total_images
 
-        for s in range(len(seeds)-1):
+        for s in range(len(seeds)-1 if compare_paths else len(seeds)):
             if state.interrupted:
                 break
             if not (compare_paths or bump_seed):
@@ -144,9 +147,10 @@ class Script(scripts.Script):
             seeds[s] = p.seed
             if s+1 < len(seeds): seeds[s+1] = p.subseed
 
-            numsteps = 1 if not loopback and s+1 == len(seeds) else int(steps) # Number of steps is 1 if we aren't looping at the last seed
-            if compare_paths and numsteps == 1:
-                numsteps = 0
+            numsteps = int(steps) if s+1 < len(seeds) else 1
+            if compare_paths or (loopback and s+1 == len(seeds)):
+                numsteps = int(steps) + 1 # 1 more step for the final image of the last seed
+            
             step_images = []
             for i in range(numsteps):
                 if state.interrupted:
@@ -174,7 +178,8 @@ class Script(scripts.Script):
                 clip.write_videofile(os.path.join(travel_path, f"travel-{travel_number:05}-{s:04}.mp4"), verbose=False, logger=None)
 
         if save_video and not compare_paths:
-            clip = ImageSequenceClip.ImageSequenceClip([np.asarray(images[0])] * lead_inout + [np.asarray(t) for t in images] + [np.asarray(images[-1])] * lead_inout , fps=video_fps)
+            frames = [np.asarray(images[0])] * lead_inout + [np.asarray(t) for t in images] + [np.asarray(images[-1])] * lead_inout
+            clip = ImageSequenceClip.ImageSequenceClip(frames, fps=video_fps)
             clip.write_videofile(os.path.join(travel_path, f"travel-{travel_number:05}.mp4"), verbose=False, logger=None)
 
         processed = Processed(p, images if show_images else [], p.seed, initial_info)
