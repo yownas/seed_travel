@@ -124,65 +124,84 @@ class Script(scripts.Script):
             seeds = [] if p.seed == None else [p.seed]
             seeds = seeds + [int(x.strip()) for x in dest_seed.split(",")]
         p.seed = seeds[0]
-        
-        # note: compare_paths and loopback will not work simultaneously.
-        total_images = int(steps) * (len(seeds) - (0 if loopback else 1)) + 1 # steps * number of traveling seeds + 1 last image
+
+        if bump_seed > 0:
+            p.subseed_strength = bump_seed
+            for s in range(len(seeds)-1):
+                if state.interrupted:
+                    break
+                p.subseed = seeds[s+1]
+                fix_seed(p)
+                proc = process_images(p)
+                if initial_info is None:
+                    initial_info = proc.info
+                images += proc.images
+            return Processed(p, images if show_images else [], p.seed, initial_info)
+
+        travel_queue = []
         if compare_paths:
-            total_images = (int(steps) + 1) * (len(seeds) - 1)
+            travel_queue = [[seeds[0], seeds[i+1]] for i in range(len(seeds)-1)]
+        else:
+            travel_queue = [[seeds[i] for i in range(len(seeds))]]
+
+        generation_queues = []
+        for travel in travel_queue:
+            generation_queue = []
+            for s in range(len(travel) - (0 if loopback else 1)):
+                p.seed = travel[s]
+                p.subseed = travel[s+1] if s+1 < len(travel) else travel[0]
+                fix_seed(p) # replaces None and -1 with random seeds
+                seed, subseed = p.seed, p.subseed
+                numsteps = int(steps) + (1 if s+1 == len(travel) else 0)
+                for i in range(numsteps):
+                    strength = float(i/float(steps))
+                    if unsinify:
+                        strength = strength + (0.1 * math.sin(strength*2*math.pi))
+                    # lower seed comes first so equivalent cached images hash the same
+                    # e.g. strength 0.75 from B to A = strength 0.25 from A to B
+                    seed0, seed1 = seed, subseed
+                    if seed1 < seed0:
+                        seed0, seed1 = seed1, seed0
+                        strength = 1 - strength
+                    if strength == 0: seed1 = 0 # seed1 does not affect the output when strength is 0
+                    if strength == 1: seed0 = 0 # seed0 does not affect the output when strength is 1
+                    key = (seed0, seed1, strength)
+                    generation_queue.append(key)
+            generation_queues.append(generation_queue)
+
+        total_images = len(set(key for queue in generation_queues for key in queue))
         print(f"Generating {total_images} images.")
 
         # Set generation helpers
         state.job_count = total_images
 
-        for s in range(len(seeds)-1 if compare_paths else len(seeds)):
-            if state.interrupted:
-                break
-            if not (compare_paths or bump_seed):
-                p.seed = seeds[s]
-            p.subseed = seeds[s+1] if s+1 < len(seeds) else seeds[0]
-            fix_seed(p)
-            # We want to save seeds since they might have been altered by fix_seed()
-            seeds[s] = p.seed
-            if s+1 < len(seeds): seeds[s+1] = p.subseed
+        # reuse generated images with the same seeds and strength
+        image_cache = {}
 
-            numsteps = int(steps) if s+1 < len(seeds) else 1
-            if compare_paths or (loopback and s+1 == len(seeds)):
-                numsteps = int(steps) + 1 # 1 more step for the final image of the last seed
-            
+        for s in range(len(generation_queues)):
+            queue = generation_queues[s]
             step_images = []
-            for i in range(numsteps):
+            for key in queue:
+                if key in image_cache:
+                    step_images += image_cache[key]
+                    images += image_cache[key]
+                    continue
+                p.seed, p.subseed, p.subseed_strength = key
                 if state.interrupted:
                     break
-                if bump_seed > 0:
-                    p.subseed_strength = bump_seed
-                elif unsinify:
-                    x = float(i/float(steps))
-                    p.subseed_strength = x + (0.1 * math.sin(x*2*math.pi))
-                else:
-                    p.subseed_strength = float(i/float(steps))
-
-                # Restore prompts
-                p.prompt = initial_prompt
-                p.negative_prompt = initial_negative_prompt
-
                 proc = process_images(p)
                 if initial_info is None:
                     initial_info = proc.info
                 step_images += proc.images
                 images += proc.images
+                image_cache[key] = proc.images
+            if save_video:
+                frames = [np.asarray(step_images[0])] * lead_inout + [np.asarray(t) for t in step_images] + [np.asarray(step_images[-1])] * lead_inout
+                clip = ImageSequenceClip.ImageSequenceClip(frames, fps=video_fps)
+                filename = f"travel-{travel_number:05}-{s:04}.mp4" if compare_paths else f"travel-{travel_number:05}.mp4"
+                clip.write_videofile(os.path.join(travel_path, filename), verbose=False, logger=None)
 
-            if save_video and compare_paths and numsteps > 1:
-                clip = ImageSequenceClip.ImageSequenceClip([np.asarray(t) for t in step_images], fps=video_fps)
-                clip.write_videofile(os.path.join(travel_path, f"travel-{travel_number:05}-{s:04}.mp4"), verbose=False, logger=None)
-
-        if save_video and not compare_paths:
-            frames = [np.asarray(images[0])] * lead_inout + [np.asarray(t) for t in images] + [np.asarray(images[-1])] * lead_inout
-            clip = ImageSequenceClip.ImageSequenceClip(frames, fps=video_fps)
-            clip.write_videofile(os.path.join(travel_path, f"travel-{travel_number:05}.mp4"), verbose=False, logger=None)
-
-        processed = Processed(p, images if show_images else [], p.seed, initial_info)
-
-        return processed
+        return Processed(p, images if show_images else [], p.seed, initial_info)
 
     def describe(self):
         return "Travel between two (or more) seeds and create a picture at each step."
