@@ -123,8 +123,6 @@ class Script(scripts.Script):
         else:
             seeds = [] if p.seed == None else [p.seed]
             seeds = seeds + [int(x.strip()) for x in dest_seed.split(",")]
-        if loopback:
-            seeds.append(seeds[0])
         p.seed = seeds[0]
         
         # note: compare_paths and loopback will not work simultaneously.
