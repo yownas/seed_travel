@@ -37,12 +37,13 @@ class Script(scripts.Script):
         upscale_meth  = gr.Dropdown(label='Upscaler',    value=lambda: DEFAULT_UPSCALE_METH, choices=CHOICES_UPSCALER)
         upscale_ratio = gr.Slider(label='Upscale ratio', value=lambda: DEFAULT_UPSCALE_RATIO, minimum=1.0, maximum=4.0, step=0.1)
         bump_seed = gr.Slider(label='Bump seed (If > 0 do a Compare Paths but only one image. No video)', value=0.0, minimum=0, maximum=1, step=0.01)
+        use_cache = gr.Checkbox(label='Use cache', value=True)
         show_images = gr.Checkbox(label='Show generated images in ui', value=True)
         unsinify = gr.Checkbox(label='"Hug the middle" during interpolation', value=False)
         allowdefsampler = gr.Checkbox(label='Allow the default Euler a Sampling method. (Does not produce good results)', value=False)
 
         return [rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths,
-                allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio]
+                allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -62,7 +63,7 @@ class Script(scripts.Script):
         return result + 1
 
     def run(self, p, rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths,
-            allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio):
+            allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache):
         initial_info = None
         images = []
         lead_inout=int(lead_inout)
@@ -193,7 +194,7 @@ class Script(scripts.Script):
             queue = generation_queues[s]
             step_images = []
             for key in queue:
-                if key in image_cache:
+                if use_cache and key in image_cache:
                     step_images += image_cache[key]
                     images += image_cache[key]
                     continue
@@ -211,12 +212,10 @@ class Script(scripts.Script):
                 else:
                     image = proc.images
 
-                #step_images += proc.images
-                #images += proc.images
-                #image_cache[key] = proc.images
                 step_images += image
                 images += image
-                image_cache[key] = image
+                if use_cache:
+                    image_cache[key] = image
             if save_video:
                 frames = [np.asarray(step_images[0])] * lead_inout + [np.asarray(t) for t in step_images] + [np.asarray(step_images[-1])] * lead_inout
                 clip = ImageSequenceClip.ImageSequenceClip(frames, fps=video_fps)
