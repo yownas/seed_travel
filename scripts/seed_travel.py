@@ -26,17 +26,20 @@ class Script(scripts.Script):
         seed_travel_extra = []
 
         dest_seed = gr.Textbox(label='Destination seed(s) (Comma separated)', lines=1)
-        rnd_seed = gr.Checkbox(label='Only use Random seeds (Unless comparing paths)', value=False)
-        seed_count = gr.Number(label='Number of random seed(s)', value=4)
+        with gr.Row():
+            rnd_seed = gr.Checkbox(label='Only use Random seeds (Unless comparing paths)', value=False)
+            seed_count = gr.Number(label='Number of random seed(s)', value=4)
         compare_paths = gr.Checkbox(label='Compare paths (Separate travels from 1st seed to each destination)', value=False)
-        steps = gr.Number(label='Steps', value=10)
+        steps = gr.Number(label='Steps (Number of images between each seed)', value=10)
         loopback = gr.Checkbox(label='Loop back to initial seed', value=False)
         save_video = gr.Checkbox(label='Save results as video', value=True)
-        video_fps = gr.Number(label='Frames per second', value=30)
-        lead_inout = gr.Number(label='Number of frames for lead in/out', value=0)
-        upscale_meth  = gr.Dropdown(label='Upscaler',    value=lambda: DEFAULT_UPSCALE_METH, choices=CHOICES_UPSCALER)
-        upscale_ratio = gr.Slider(label='Upscale ratio', value=lambda: DEFAULT_UPSCALE_RATIO, minimum=1.0, maximum=4.0, step=0.1)
-        bump_seed = gr.Slider(label='Bump seed (If > 0 do a Compare Paths but only one image. No video)', value=0.0, minimum=0, maximum=1, step=0.01)
+        with gr.Row():
+            video_fps = gr.Number(label='Frames per second', value=30)
+            lead_inout = gr.Number(label='Number of frames for lead in/out', value=0)
+        with gr.Row():
+            upscale_meth  = gr.Dropdown(label='Upscaler',    value=lambda: DEFAULT_UPSCALE_METH, choices=CHOICES_UPSCALER)
+            upscale_ratio = gr.Slider(label='Upscale ratio', value=lambda: DEFAULT_UPSCALE_RATIO, minimum=1.0, maximum=4.0, step=0.1)
+        bump_seed = gr.Slider(label='Bump seed (If > 0 do a Compare Paths but only one image. No video will be generated.)', value=0.0, minimum=0, maximum=1, step=0.01)
         use_cache = gr.Checkbox(label='Use cache', value=True)
         show_images = gr.Checkbox(label='Show generated images in ui', value=True)
         unsinify = gr.Checkbox(label='"Hug the middle" during interpolation', value=False)
