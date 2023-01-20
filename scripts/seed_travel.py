@@ -6,7 +6,14 @@ import math
 import random
 import re
 from modules.processing import Processed, process_images, fix_seed
-from modules.shared import opts, cmd_opts, state
+from modules.shared import opts, cmd_opts, state, sd_upscalers
+from modules.images import resize_image
+
+__ = lambda key, value=None: opts.data.get(f'customscript/seed_travel.py/txt2img/{key}/value', value)
+
+DEFAULT_UPSCALE_METH   = __('Upscaler', 'Lanczos')
+DEFAULT_UPSCALE_RATIO  = __('Upscale ratio', 1.0)
+CHOICES_UPSCALER  = [x.name for x in sd_upscalers]
 
 class Script(scripts.Script):
     def title(self):
@@ -27,12 +34,15 @@ class Script(scripts.Script):
         save_video = gr.Checkbox(label='Save results as video', value=True)
         video_fps = gr.Number(label='Frames per second', value=30)
         lead_inout = gr.Number(label='Number of frames for lead in/out', value=0)
+        upscale_meth  = gr.Dropdown(label='Upscaler',    value=lambda: DEFAULT_UPSCALE_METH, choices=CHOICES_UPSCALER)
+        upscale_ratio = gr.Slider(label='Upscale ratio', value=lambda: DEFAULT_UPSCALE_RATIO, minimum=1.0, maximum=4.0, step=0.1)
         bump_seed = gr.Slider(label='Bump seed (If > 0 do a Compare Paths but only one image. No video)', value=0.0, minimum=0, maximum=1, step=0.01)
         show_images = gr.Checkbox(label='Show generated images in ui', value=True)
         unsinify = gr.Checkbox(label='"Hug the middle" during interpolation', value=False)
         allowdefsampler = gr.Checkbox(label='Allow the default Euler a Sampling method. (Does not produce good results)', value=False)
 
-        return [rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths, allowdefsampler, bump_seed, lead_inout]
+        return [rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths,
+                allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -51,7 +61,8 @@ class Script(scripts.Script):
                 pass
         return result + 1
 
-    def run(self, p, rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths, allowdefsampler, bump_seed, lead_inout):
+    def run(self, p, rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths,
+            allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio):
         initial_info = None
         images = []
         lead_inout=int(lead_inout)
@@ -192,9 +203,20 @@ class Script(scripts.Script):
                 proc = process_images(p)
                 if initial_info is None:
                     initial_info = proc.info
-                step_images += proc.images
-                images += proc.images
-                image_cache[key] = proc.images
+
+                # upscale - copied from https://github.com/Kahsolt/stable-diffusion-webui-prompt-travel
+                tgt_w, tgt_h = round(p.width * upscale_ratio), round(p.height * upscale_ratio)
+                if upscale_meth != 'None' and upscale_ratio > 1.0:
+                    image = [resize_image(0, proc.images[0], tgt_w, tgt_h, upscaler_name=upscale_meth)]
+                else:
+                    image = proc.images
+
+                #step_images += proc.images
+                #images += proc.images
+                #image_cache[key] = proc.images
+                step_images += image
+                images += image
+                image_cache[key] = image
             if save_video:
                 frames = [np.asarray(step_images[0])] * lead_inout + [np.asarray(t) for t in step_images] + [np.asarray(step_images[-1])] * lead_inout
                 clip = ImageSequenceClip.ImageSequenceClip(frames, fps=video_fps)
