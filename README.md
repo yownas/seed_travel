@@ -39,6 +39,8 @@ So, interpolating between the noise from two seeds will not only look cool as a 
 
 `Only use Random seeds`: Let you set `Number of random seeds` instead of typing them manually. `Seed` will be ignored unless comparing paths (see below).
 
+`Compare paths`: See below.
+
 `Steps`: Number of images to generate between each seed.
 
 `Loop back to Initial seed`: When reaching the end, generate images to get back to the first seed.
@@ -47,9 +49,15 @@ So, interpolating between the noise from two seeds will not only look cool as a 
 
 `Frames per second`: The fps of the video.
 
-`Number of frames for lead in/out`: Amount of frames to be padded with a static image at the start and ending of the video. So you'll get a short pause before the video ends.
+`Number of frames for lead in/out`: Amount of frames to be padded with a static image at the start and ending of the video. So you'll get a short pause before the video start/ends.
+
+`Upscaler`: Choose upscale method to be applied to the images before made into a video.
+
+`Upscale ratio`: How much the images should be upscaled. A value of 1 will disable scaling.
 
 `Bump seed`: If this is set higher than 0, instead of traveling to the destination seeds you will get a number of images based on the initial seed, mixed with the destination seeds. Perfect for when you have an almost perfect image but want to nudge it a little to see if you can improve it.
+
+`Use cache`: To speed up generation, generated images are cached and re-used if possible. If you want to manually post-process the images and want all of them to be generated, please disable this.
 
 `Show generated images in ui`: Disable this if you generate a lot of steps to make life easier for your browser.
 
