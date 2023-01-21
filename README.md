@@ -39,7 +39,7 @@ So, interpolating between the noise from two seeds will not only look cool as a 
 
 `Only use Random seeds`: Let you set `Number of random seeds` instead of typing them manually. `Seed` will be ignored unless comparing paths (see below).
 
-`Compare paths`: See below.
+`Compare paths`: Instead of traveling betwen the seeds in order, travel from the first seed to each of the other seeds. For example, "1, 2, 3, 4" would normally travel from 1 to 2, to 3 to 4. If this is enabled the script will travel from 1 to 2, 1 to 3, 1 to 4. Useful if you want to test paths.
 
 `Steps`: Number of images to generate between each seed.
 
