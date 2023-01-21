@@ -38,7 +38,7 @@ class Script(scripts.Script):
             lead_inout = gr.Number(label='Number of frames for lead in/out', value=0)
         with gr.Row():
             upscale_meth  = gr.Dropdown(label='Upscaler',    value=lambda: DEFAULT_UPSCALE_METH, choices=CHOICES_UPSCALER)
-            upscale_ratio = gr.Slider(label='Upscale ratio', value=lambda: DEFAULT_UPSCALE_RATIO, minimum=1.0, maximum=4.0, step=0.1)
+            upscale_ratio = gr.Slider(label='Upscale ratio', value=lambda: DEFAULT_UPSCALE_RATIO, minimum=0.0, maximum=8.0, step=0.1)
         bump_seed = gr.Slider(label='Bump seed (If > 0 do a Compare Paths but only one image. No video will be generated.)', value=0.0, minimum=0, maximum=1, step=0.01)
         use_cache = gr.Checkbox(label='Use cache', value=True)
         show_images = gr.Checkbox(label='Show generated images in ui', value=True)
@@ -210,7 +210,7 @@ class Script(scripts.Script):
 
                 # upscale - copied from https://github.com/Kahsolt/stable-diffusion-webui-prompt-travel
                 tgt_w, tgt_h = round(p.width * upscale_ratio), round(p.height * upscale_ratio)
-                if upscale_meth != 'None' and upscale_ratio > 1.0:
+                if upscale_meth != 'None' and upscale_ratio != 1.0 and upscale_ratio != 0.0:
                     image = [resize_image(0, proc.images[0], tgt_w, tgt_h, upscaler_name=upscale_meth)]
                 else:
                     image = proc.images
