@@ -42,10 +42,12 @@ class Script(scripts.Script):
         bump_seed = gr.Slider(label='Bump seed (If > 0 do a Compare Paths but only one image. No video will be generated.)', value=0.0, minimum=0, maximum=1, step=0.01)
         use_cache = gr.Checkbox(label='Use cache', value=True)
         show_images = gr.Checkbox(label='Show generated images in ui', value=True)
-        unsinify = gr.Checkbox(label='"Hug the middle" during interpolation', value=False)
+        with gr.Row():
+            rate = gr.Dropdown(label='Interpolation rate', value='Linear', choices=['Linear', 'Hug-the-middle', 'Slow start', 'Quick start'])
+            ratestr = gr.Slider(label='Rate strength', value=3, minimum=0.0, maximum=10.0, step=0.1)
         allowdefsampler = gr.Checkbox(label='Allow the default Euler a Sampling method. (Does not produce good results)', value=False)
 
-        return [rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths,
+        return [rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, save_video, video_fps, show_images, compare_paths,
                 allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache]
 
     def get_next_sequence_number(path):
@@ -65,7 +67,7 @@ class Script(scripts.Script):
                 pass
         return result + 1
 
-    def run(self, p, rnd_seed, seed_count, dest_seed, steps, unsinify, loopback, save_video, video_fps, show_images, compare_paths,
+    def run(self, p, rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, save_video, video_fps, show_images, compare_paths,
             allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache):
         initial_info = None
         images = []
@@ -170,8 +172,16 @@ class Script(scripts.Script):
                 numsteps = int(steps) + (1 if s+1 == len(travel) else 0)
                 for i in range(numsteps):
                     strength = float(i/float(steps))
-                    if unsinify:
+
+                    # Calculate rate
+                    if rate == "Hug-the-middle":
                         strength = strength + (0.1 * math.sin(strength*2*math.pi))
+                    elif rate == "Slow start":
+                        strength = strength**ratestr
+                    elif rate == "Quick start":
+                        strength = (1-strength)**ratestr
+                    # "Linear" is default (do nothing)
+
                     # lower seed comes first so equivalent cached images hash the same
                     # e.g. strength 0.75 from B to A = strength 0.25 from A to B
                     seed0, seed1 = seed, subseed

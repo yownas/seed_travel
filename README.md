@@ -61,7 +61,8 @@ So, interpolating between the noise from two seeds will not only look cool as a 
 
 `Show generated images in ui`: Disable this if you generate a lot of steps to make life easier for your browser.
 
-`"Hug the middle" during interpolation`: Left over from an old experiment. Makes the interpolation go a little bit faster at the start and at the end. May sometimes produce smoother video, most often not.
+`Interpolation rate`: Select how the interpolation should be done. Make the changes linear, slow in the middle, at the end or in the beginning. This can be used if you want your animation to change to the beat of music or make the interpolation more interesting.
+`Rate strength`: (Only affect the "Slow start" and "Quick start" rate.) Choose how fast/slow interpolation should be done. Useful numbers are around 2 to 5. (Below 1.0 things will be very weird.)
 
 `Allow the default Euler a Sampling method. (Does not produce good results)`: By default Euler A is disabled since it breaks animations with more than 2 seeds. Some Samplers doesn't seem to handle Variation Seeds well, and fail when switching from one seed to another. Mostly the ones with a "a" in them. You are of course free to use them, but you might get weird skips in the animation.
 
