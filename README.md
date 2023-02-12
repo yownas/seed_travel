@@ -23,6 +23,12 @@ Manual install:
 1. Copy the file in the scripts-folder to the scripts-folder from https://github.com/AUTOMATIC1111/stable-diffusion-webui
 2. Add `moviepy==1.0.3` to requirements_versions.txt
 
+# Colab
+
+Seed travel should work in one of the Colab links on AUTOMATIC1111's page. But to be able to create videos you need to make sure that yoour Colab has the correct version of moviepy installed. By default version 0.2.3.5 seem to be installed, but it is easy to fix by just adding this to your code (somewhere at the top is fine). Then install Seed Travel from the Extensions tab as usual.
+
+`!pip install moviepy==1.0.3`
+
 # What is "seed traveling"?
 To understand what "seed traveling" is I first have to give a very very simplified explaination of how Stable Diffusion generates pictures.
 It starts with noise and then tweak and poke it until it gets an image that looks like something that match the prompt you gave. And to get all this initial noise you use a seed. The seed is used to generate a bunch of random numbers which will be your inital noise. A different seed generates a different set of random numbers.
@@ -62,6 +68,7 @@ So, interpolating between the noise from two seeds will not only look cool as a 
 `Show generated images in ui`: Disable this if you generate a lot of steps to make life easier for your browser.
 
 `Interpolation rate`: Select how the interpolation should be done. Make the changes linear, slow in the middle, at the end or in the beginning. This can be used if you want your animation to change to the beat of music or make the interpolation more interesting.
+
 `Rate strength`: (Only affect the "Slow start" and "Quick start" rate.) Choose how fast/slow interpolation should be done. Useful numbers are around 2 to 5. (Below 1.0 things will be very weird.)
 
 `Allow the default Euler a Sampling method. (Does not produce good results)`: By default Euler A is disabled since it breaks animations with more than 2 seeds. Some Samplers doesn't seem to handle Variation Seeds well, and fail when switching from one seed to another. Mostly the ones with a "a" in them. You are of course free to use them, but you might get weird skips in the animation.
