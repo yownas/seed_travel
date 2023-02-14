@@ -39,7 +39,7 @@ class Script(scripts.Script):
         with gr.Row():
             upscale_meth  = gr.Dropdown(label='Upscaler',    value=lambda: DEFAULT_UPSCALE_METH, choices=CHOICES_UPSCALER)
             upscale_ratio = gr.Slider(label='Upscale ratio', value=lambda: DEFAULT_UPSCALE_RATIO, minimum=0.0, maximum=8.0, step=0.1)
-        bump_seed = gr.Slider(label='Bump seed (If > 0 do a Compare Paths but only one image. No video will be generated.)', value=0.0, minimum=0, maximum=1, step=0.01)
+        bump_seed = gr.Slider(label='Bump seed (If > 0 do a Compare Paths but only one image. No video will be generated.)', value=0.0, minimum=0, maximum=0.5, step=0.001)
         use_cache = gr.Checkbox(label='Use cache', value=True)
         show_images = gr.Checkbox(label='Show generated images in ui', value=True)
         with gr.Row():
@@ -126,10 +126,10 @@ class Script(scripts.Script):
         if compare_paths or bump_seed > 0:
             loopback = False
 
+        seeds = []
         # Random seeds
         if rnd_seed == True:
-            seeds = []          
-            if compare_paths and not p.seed == None:
+            if (compare_paths or bump_seed) and not p.seed == None:
                 seeds.append(p.seed)
             s = 0          
             while (s < seed_count):
@@ -194,7 +194,10 @@ class Script(scripts.Script):
                     generation_queue.append(key)
             generation_queues.append(generation_queue)
 
-        total_images = len(set(key for queue in generation_queues for key in queue))
+        if bump_seed:
+            total_images = len(seeds)
+        else:
+            total_images = len(set(key for queue in generation_queues for key in queue))
         print(f"Generating {total_images} images.")
 
         # Set generation helpers
