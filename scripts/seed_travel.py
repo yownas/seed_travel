@@ -226,7 +226,7 @@ class Script(scripts.Script):
                 if upscale_meth != 'None' and upscale_ratio != 1.0 and upscale_ratio != 0.0:
                     image = [resize_image(0, proc.images[0], tgt_w, tgt_h, upscaler_name=upscale_meth)]
                 else:
-                    image = proc.images
+                    image = [proc.images[0]]
 
                 step_images += image
                 images += image
