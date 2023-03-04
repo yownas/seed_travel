@@ -329,8 +329,11 @@ class Script(scripts.Script):
                         else:
                             # DEBUG
                             if abs(subseed_strength_b - subseed_strength_a) <= seed_travel_substep_min:
-                                print("***### Reached step minumum limit ###***")
+                                print(f"Reached minimum step limit @{step_keys[i]}   ")
                                 skip_count += 1
+                            else:
+                                if i > done:
+                                    print(f"Finished: {i} of {len(step_keys)}   ")
                             done = i
                 # DEBUG
                 #print(step_keys)
