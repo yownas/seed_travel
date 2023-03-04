@@ -18,6 +18,8 @@ DEFAULT_UPSCALE_METH   = __('Upscaler', 'Lanczos')
 DEFAULT_UPSCALE_RATIO  = __('Upscale ratio', 1.0)
 CHOICES_UPSCALER  = [x.name for x in sd_upscalers]
 
+seed_travel_substep_min = 0.0001
+
 class Script(scripts.Script):
     def title(self):
         return "Seed travel"
@@ -268,7 +270,7 @@ class Script(scripts.Script):
 
                         seed_a, subseed_a, subseed_strength_a = step_keys[i]
                         seed_b, subseed_b, subseed_strength_b = step_keys[i+1]
-                        if d < ssim_diff and abs(subseed_strength_b - subseed_strength_a) > 1/10000:
+                        if d < ssim_diff and abs(subseed_strength_b - subseed_strength_a) > seed_travel_substep_min:
                             # DEBUG
                             print(f"SSIM: {step_keys[i]} <-> {step_keys[i+1]} = {d} ({len(step_images)} images total)")
 
@@ -294,7 +296,7 @@ class Script(scripts.Script):
                             p.seed, p.subseed, p.subseed_strength = key
 
                             # DEBUG
-                            print(f"Process: {key}")
+                            print(f"Process: {key} of {seeds}")
                             proc = process_images(p)
 
                             if initial_info is None:
@@ -313,12 +315,12 @@ class Script(scripts.Script):
                             break;
                         else:
                             # DEBUG
-                            if abs(subseed_strength_b - subseed_strength_a) <= 1/10000:
+                            if abs(subseed_strength_b - subseed_strength_a) <= seed_travel_substep_min:
                                 print("***### Reached step minumum limit ###***")
                                 skip_count += 1
                             done = i
                 # DEBUG
-                print(step_keys)
+                #print(step_keys)
                 print(f"Minimum step limits reached: {skip_count}")
 
             if save_video:
@@ -328,6 +330,7 @@ class Script(scripts.Script):
                 clip.write_videofile(os.path.join(travel_path, filename), verbose=False, logger=None)
 
         return Processed(p, images if show_images else [], p.seed, initial_info)
+
 
     def describe(self):
         return "Travel between two (or more) seeds and create a picture at each step."
