@@ -127,6 +127,7 @@ class Script(scripts.Script):
         # Force Batch Count and Batch Size to 1.
         p.n_iter = 1
         p.batch_size = 1
+        p.seed = int(p.seed)
 
         initial_prompt = p.prompt
         initial_negative_prompt = p.negative_prompt
@@ -214,6 +215,10 @@ class Script(scripts.Script):
                 if state.interrupted:
                     break
                 p.seed, p.subseed, p.subseed_strength = key
+                step_keys += [key]
+
+                # DEBUG
+                print(f"Process: {key} of {seeds}")
 
                 # lower seed comes first so equivalent cached images hash the same
                 # e.g. strength 0.75 from B to A = strength 0.25 from A to B
@@ -241,10 +246,12 @@ class Script(scripts.Script):
                     image = [proc.images[0]]
 
                 step_images += image
-                step_keys += [key]
                 images += image
                 if use_cache:
                     image_cache[cache_key] = image
+
+            # DEBUG
+            print(f"step_keys: {step_keys}")
 
             # If SSIM > 0 and not bump_seed
             # TODO ssim step_images
@@ -278,20 +285,26 @@ class Script(scripts.Script):
                             check = True
 
                             # 1 AM logic... This seem to pick the correct seeds
-                            if subseed_strength_a < 1:
-                                from_seed = seed_a
-                                to_seed = subseed_a
-                            else:
-                                subseed_strength_a = 0
-                                from_seed = subseed_a
-                                if subseed_strength_b < 1:
-                                    to_seed = subseed_a
-                                else:
-                                    to_seed = subseed_b
+                            #if subseed_strength_a < 1:
+                            #    from_seed = seed_a
+                            #    to_seed = subseed_a
+                            #else:
+                            #    subseed_strength_a = 0
+                            #    from_seed = subseed_a
+                            #    if subseed_strength_b < 1:
+                            #        to_seed = subseed_a
+                            #    else:
+                            #        to_seed = subseed_b
+
+                            if subseed_strength_b == 0:
+                                subseed_strength_b = 1
 
                             new_strength = (subseed_strength_a + subseed_strength_b)/2.0
 
-                            key = (from_seed, to_seed, new_strength)
+                            #new_strength = (subseed_strength_a + subseed_strength_b)/2.0
+                            #key = (from_seed, to_seed, new_strength)
+
+                            key = (seed_a, subseed_a, new_strength)
 
                             p.seed, p.subseed, p.subseed_strength = key
 
