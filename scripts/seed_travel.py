@@ -193,6 +193,9 @@ class Script(scripts.Script):
 
                     key = (seed, subseed, strength)
                     generation_queue.append(key)
+            if not loopback: # Kludge to add last image
+                key = (subseed, subseed, 0.0)
+                generation_queue.append(key)
             generation_queues.append(generation_queue)
 
         if bump_seed:
@@ -279,22 +282,10 @@ class Script(scripts.Script):
                         seed_b, subseed_b, subseed_strength_b = step_keys[i+1]
                         if d < ssim_diff and abs(subseed_strength_b - subseed_strength_a) > seed_travel_substep_min:
                             # DEBUG
-                            print(f"SSIM: {step_keys[i]} <-> {step_keys[i+1]} = {d} ({len(step_images)} images total)")
+                            print(f"SSIM: {step_keys[i]} <-> {step_keys[i+1]} = {d}")
 
                             # Add image and run check again
                             check = True
-
-                            # 1 AM logic... This seem to pick the correct seeds
-                            #if subseed_strength_a < 1:
-                            #    from_seed = seed_a
-                            #    to_seed = subseed_a
-                            #else:
-                            #    subseed_strength_a = 0
-                            #    from_seed = subseed_a
-                            #    if subseed_strength_b < 1:
-                            #        to_seed = subseed_a
-                            #    else:
-                            #        to_seed = subseed_b
 
                             if subseed_strength_b == 0:
                                 subseed_strength_b = 1
@@ -329,14 +320,15 @@ class Script(scripts.Script):
                         else:
                             # DEBUG
                             if abs(subseed_strength_b - subseed_strength_a) <= seed_travel_substep_min:
-                                print(f"Reached minimum step limit @{step_keys[i]}   ")
+                                print(f"Reached minimum step limit @{step_keys[i]} (Skipping)   ")
                                 skip_count += 1
                             else:
                                 if i > done:
-                                    print(f"Finished: {i} of {len(step_keys)}   ")
+                                    print(f"Done: {i} of {len(step_keys)} ({step_keys[i]}) {len(step_keys[i:])} in queue.")
+                                    #print(f"Work: {step_keys[i:]}")
                             done = i
                 # DEBUG
-                #print(step_keys)
+                print("SSIM done!")
                 print(f"Minimum step limits reached: {skip_count}")
 
             if save_video:
