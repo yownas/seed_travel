@@ -3,6 +3,9 @@ import sys
 import modules.scripts as scripts
 import gradio as gr
 import math
+from torchmetrics import StructuralSimilarityIndexMeasure
+from torchvision import transforms
+import torch
 import random
 import re
 from modules.processing import Processed, process_images, fix_seed
@@ -31,7 +34,9 @@ class Script(scripts.Script):
             seed_count = gr.Number(label='Number of random seed(s)', value=4)
         compare_paths = gr.Checkbox(label='Compare paths (Separate travels from 1st seed to each destination)', value=False)
         steps = gr.Number(label='Steps (Number of images between each seed)', value=10)
-        loopback = gr.Checkbox(label='Loop back to initial seed', value=False)
+        with gr.Row():
+            loopback = gr.Checkbox(label='Loop back to initial seed', value=False)
+            ssim_diff = gr.Slider(label='SSIM threshold (1.0=exact copy)', value=0.0, minimum=0.0, maximum=1.0, step=0.01)
         save_video = gr.Checkbox(label='Save results as video', value=True)
         with gr.Row():
             video_fps = gr.Number(label='Frames per second', value=30)
@@ -48,7 +53,7 @@ class Script(scripts.Script):
         allowdefsampler = gr.Checkbox(label='Allow the default Euler a Sampling method. (Does not produce good results)', value=False)
 
         return [rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, save_video, video_fps, show_images, compare_paths,
-                allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache]
+                allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -68,10 +73,11 @@ class Script(scripts.Script):
         return result + 1
 
     def run(self, p, rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, save_video, video_fps, show_images, compare_paths,
-            allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache):
+            allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff):
         initial_info = None
         images = []
         lead_inout=int(lead_inout)
+        tgt_w, tgt_h = round(p.width * upscale_ratio), round(p.height * upscale_ratio)
 
         # If we are just bumping seeds, ignore compare_paths and save_video
         if bump_seed > 0:
@@ -182,15 +188,7 @@ class Script(scripts.Script):
                         strength = (1-strength)**ratestr
                     # "Linear" is default (do nothing)
 
-                    # lower seed comes first so equivalent cached images hash the same
-                    # e.g. strength 0.75 from B to A = strength 0.25 from A to B
-                    seed0, seed1 = seed, subseed
-                    if seed1 < seed0:
-                        seed0, seed1 = seed1, seed0
-                        strength = 1 - strength
-                    if strength == 0: seed1 = 0 # seed1 does not affect the output when strength is 0
-                    if strength == 1: seed0 = 0 # seed0 does not affect the output when strength is 1
-                    key = (seed0, seed1, strength)
+                    key = (seed, subseed, strength)
                     generation_queue.append(key)
             generation_queues.append(generation_queue)
 
@@ -209,29 +207,120 @@ class Script(scripts.Script):
         for s in range(len(generation_queues)):
             queue = generation_queues[s]
             step_images = []
+            step_keys = []
             for key in queue:
-                if use_cache and key in image_cache:
-                    step_images += image_cache[key]
-                    images += image_cache[key]
-                    continue
-                p.seed, p.subseed, p.subseed_strength = key
                 if state.interrupted:
                     break
+                p.seed, p.subseed, p.subseed_strength = key
+
+                # lower seed comes first so equivalent cached images hash the same
+                # e.g. strength 0.75 from B to A = strength 0.25 from A to B
+                seed0, seed1, strength = key
+                if seed1 < seed0:
+                    seed0, seed1 = seed1, seed0
+                    strength = 1 - strength
+                if strength == 0: seed1 = 0 # seed1 does not affect the output when strength is 0
+                if strength == 1: seed0 = 0 # seed0 does not affect the output when strength is 1
+                cache_key = (seed0, seed1, strength)
+
+                if use_cache and cache_key in image_cache:
+                    step_images += image_cache[cache_key]
+                    images += image_cache[cache_key]
+                    continue
+
                 proc = process_images(p)
                 if initial_info is None:
                     initial_info = proc.info
 
                 # upscale - copied from https://github.com/Kahsolt/stable-diffusion-webui-prompt-travel
-                tgt_w, tgt_h = round(p.width * upscale_ratio), round(p.height * upscale_ratio)
                 if upscale_meth != 'None' and upscale_ratio != 1.0 and upscale_ratio != 0.0:
                     image = [resize_image(0, proc.images[0], tgt_w, tgt_h, upscaler_name=upscale_meth)]
                 else:
                     image = [proc.images[0]]
 
                 step_images += image
+                step_keys += [key]
                 images += image
                 if use_cache:
-                    image_cache[key] = image
+                    image_cache[cache_key] = image
+
+            # If SSIM > 0 and not bump_seed
+            # TODO ssim step_images
+            if ssim_diff > 0:
+                ssim = StructuralSimilarityIndexMeasure(data_range=1.0)
+                # transform = transforms.Compose([transforms.Resize((x/2,y/2)), transforms.ToTensor()])
+                transform = transforms.Compose([transforms.ToTensor()])
+
+                check = True
+                skip_count = 0
+
+                done = 0
+                while(check):
+                    if state.interrupted:
+                        break
+                    check = False
+                    for i in range(done, len(step_images)-1):
+                        # Check distance between i and i+1
+
+                        a = transform(step_images[i].convert('RGB')).unsqueeze(0)
+                        b = transform(step_images[i+1].convert('RGB')).unsqueeze(0)
+                        d = ssim(a, b)
+
+                        seed_a, subseed_a, subseed_strength_a = step_keys[i]
+                        seed_b, subseed_b, subseed_strength_b = step_keys[i+1]
+                        if d < ssim_diff and abs(subseed_strength_b - subseed_strength_a) > 1/10000:
+                            # DEBUG
+                            print(f"SSIM: {step_keys[i]} <-> {step_keys[i+1]} = {d} ({len(step_images)} images total)")
+
+                            # Add image and run check again
+                            check = True
+
+                            # 1 AM logic... This seem to pick the correct seeds
+                            if subseed_strength_a < 1:
+                                from_seed = seed_a
+                                to_seed = subseed_a
+                            else:
+                                subseed_strength_a = 0
+                                from_seed = subseed_a
+                                if subseed_strength_b < 1:
+                                    to_seed = subseed_a
+                                else:
+                                    to_seed = subseed_b
+
+                            new_strength = (subseed_strength_a + subseed_strength_b)/2.0
+
+                            key = (from_seed, to_seed, new_strength)
+
+                            p.seed, p.subseed, p.subseed_strength = key
+
+                            # DEBUG
+                            print(f"Process: {key}")
+                            proc = process_images(p)
+
+                            if initial_info is None:
+                                initial_info = proc.info
+
+                            # upscale - copied from https://github.com/Kahsolt/stable-diffusion-webui-prompt-travel
+                            if upscale_meth != 'None' and upscale_ratio != 1.0 and upscale_ratio != 0.0:
+                                image = [resize_image(0, proc.images[0], tgt_w, tgt_h, upscaler_name=upscale_meth)]
+                            else:
+                                image = [proc.images[0]]
+
+                            #images = images[0:i] + [image] + images[i:]
+                            # TODO use cache?
+                            step_images.insert(i+1, image[0])
+                            step_keys.insert(i+1, key)
+                            break;
+                        else:
+                            # DEBUG
+                            if abs(subseed_strength_b - subseed_strength_a) <= 1/10000:
+                                print("***### Reached step minumum limit ###***")
+                                skip_count += 1
+                            done = i
+                # DEBUG
+                print(step_keys)
+                print(f"Minimum step limits reached: {skip_count}")
+
             if save_video:
                 frames = [np.asarray(step_images[0])] * lead_inout + [np.asarray(t) for t in step_images] + [np.asarray(step_images[-1])] * lead_inout
                 clip = ImageSequenceClip.ImageSequenceClip(frames, fps=video_fps)
