@@ -38,8 +38,10 @@ class Script(scripts.Script):
         steps = gr.Number(label='Steps (Number of images between each seed)', value=10)
         with gr.Row():
             loopback = gr.Checkbox(label='Loop back to initial seed', value=False)
-            ssim_diff = gr.Slider(label='SSIM threshold (1.0=exact copy)', value=0.0, minimum=0.0, maximum=1.0, step=0.01)
-        save_video = gr.Checkbox(label='Save results as video', value=True)
+            ssim_diff = gr.Slider(label='SSIM threshold (0 to disable)', value=0.0, minimum=0.0, maximum=1.0, step=0.01)
+        with gr.Row():
+            save_video = gr.Checkbox(label='Save results as video', value=True)
+            ssim_ccrop = gr.Slider(label='SSIM CenterCrop% (0 to disable)', value=0, minimum=0, maximum=100, step=1)
         with gr.Row():
             video_fps = gr.Number(label='Frames per second', value=30)
             lead_inout = gr.Number(label='Number of frames for lead in/out', value=0)
@@ -55,7 +57,7 @@ class Script(scripts.Script):
         allowdefsampler = gr.Checkbox(label='Allow the default Euler a Sampling method. (Does not produce good results)', value=False)
 
         return [rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, save_video, video_fps, show_images, compare_paths,
-                allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff]
+                allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff, ssim_ccrop]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -75,7 +77,7 @@ class Script(scripts.Script):
         return result + 1
 
     def run(self, p, rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, save_video, video_fps, show_images, compare_paths,
-            allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff):
+            allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff, ssim_ccrop):
         initial_info = None
         images = []
         lead_inout=int(lead_inout)
@@ -261,7 +263,10 @@ class Script(scripts.Script):
             if ssim_diff > 0:
                 ssim = StructuralSimilarityIndexMeasure(data_range=1.0)
                 # transform = transforms.Compose([transforms.Resize((x/2,y/2)), transforms.ToTensor()])
-                transform = transforms.Compose([transforms.ToTensor()])
+                if ssim_ccrop == 0:
+                    transform = transforms.Compose([transforms.ToTensor()])
+                else:
+                    transform = transforms.Compose([transforms.CenterCrop(min(tgt_w, tgt_h)*(ssim_ccrop/100)), transforms.ToTensor()])
 
                 check = True
                 skip_count = 0

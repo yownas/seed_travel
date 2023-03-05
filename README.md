@@ -51,9 +51,11 @@ So, interpolating between the noise from two seeds will not only look cool as a 
 
 `Loop back to Initial seed`: When reaching the end, generate images to get back to the first seed.
 
-`SSIM threshold (1.0=exact copy)`: If this is set to something other than 0, the script will first generate the steps you've specified above, but then take a second pass and fill in the gaps between images that differ too much according to Structual Similarity Index Metric [(pdf)](https://www.cns.nyu.edu/pub/eero/wang03-reprint.pdf). A good value depends a lot on which model and prompt you use, but 0.7 to 0.8 should be a good starting value. More than 0.95 will probably not improve much. If you want a very smooth video you should use something like [Flowframes](https://nmkd.itch.io/flowframes).
+`SSIM threshold (0 to disable)`: If this is set to something other than 0, the script will first generate the steps you've specified above, but then take a second pass and fill in the gaps between images that differ too much according to Structual Similarity Index Metric [(pdf)](https://www.cns.nyu.edu/pub/eero/wang03-reprint.pdf). A good value depends a lot on which model and prompt you use, but 0.7 to 0.8 should be a good starting value. More than 0.95 will probably not improve much. If you want a very smooth video you should use something like [Flowframes](https://nmkd.itch.io/flowframes).
 
 `Save results as video`: Makes videos.
+
+`SSIM CenterCrop% (0 to disable)`: Crop a square from the center of the image to be used for SSIM. In percent of the height or width (whichever is smaller). 0 will use the entire image. Only checking a small part of the image makes SSIM more sensitive. Be prepared to lower SSIM threshold to 0.4 to 0.5 if you use this.
 
 `Frames per second`: The fps of the video.
 
