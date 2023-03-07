@@ -77,6 +77,8 @@ So, interpolating between the noise from two seeds will not only look cool as a 
 
 `Allow the default Euler a Sampling method. (Does not produce good results)`: By default Euler A is disabled since it breaks animations with more than 2 seeds. Some Samplers doesn't seem to handle Variation Seeds well, and fail when switching from one seed to another. Mostly the ones with a "a" in them. You are of course free to use them, but you might get weird skips in the animation.
 
+`SSIM minimum substep`: Smallest "step" SSIM is allowed to take. Sometimes animations can't me smoothed out, no matter how small steps you take. It is better to let the script give up and have a single skip than force it and get an animation that flickers.
+
 # Output
 
 The images and video (if selected) will show up in the `outputs\txt2-images\travels` folder. With a separate numbered folder for each travel you've made.

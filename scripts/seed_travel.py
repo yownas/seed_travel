@@ -18,8 +18,6 @@ DEFAULT_UPSCALE_METH   = __('Upscaler', 'Lanczos')
 DEFAULT_UPSCALE_RATIO  = __('Upscale ratio', 1.0)
 CHOICES_UPSCALER  = [x.name for x in sd_upscalers]
 
-seed_travel_substep_min = 0.0001
-
 class Script(scripts.Script):
     def title(self):
         return "Seed travel"
@@ -55,9 +53,10 @@ class Script(scripts.Script):
             rate = gr.Dropdown(label='Interpolation rate', value='Linear', choices=['Linear', 'Hug-the-middle', 'Slow start', 'Quick start'])
             ratestr = gr.Slider(label='Rate strength', value=3, minimum=0.0, maximum=10.0, step=0.1)
         allowdefsampler = gr.Checkbox(label='Allow the default Euler a Sampling method. (Does not produce good results)', value=False)
+        substep_min = gr.Number(label='SSIM minimum substep', value=0.0001)
 
         return [rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, save_video, video_fps, show_images, compare_paths,
-                allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff, ssim_ccrop]
+                allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff, ssim_ccrop, substep_min]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -77,7 +76,7 @@ class Script(scripts.Script):
         return result + 1
 
     def run(self, p, rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, save_video, video_fps, show_images, compare_paths,
-            allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff, ssim_ccrop):
+            allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff, ssim_ccrop, substep_min):
         initial_info = None
         images = []
         lead_inout=int(lead_inout)
@@ -270,6 +269,7 @@ class Script(scripts.Script):
 
                 check = True
                 skip_count = 0
+                skip_ssim_min = 1.0
 
                 done = 0
                 while(check):
@@ -285,9 +285,9 @@ class Script(scripts.Script):
 
                         seed_a, subseed_a, subseed_strength_a = step_keys[i]
                         seed_b, subseed_b, subseed_strength_b = step_keys[i+1]
-                        if d < ssim_diff and abs(subseed_strength_b - subseed_strength_a) > seed_travel_substep_min:
+                        if d < ssim_diff and abs(subseed_strength_b - subseed_strength_a) > substep_min:
                             # DEBUG
-                            print(f"SSIM: {step_keys[i]} <-> {step_keys[i+1]} = {d}")
+                            print(f"SSIM: {step_keys[i]} <-> {step_keys[i+1]} = ({subseed_strength_b - subseed_strength_a}) {d}")
 
                             # Add image and run check again
                             check = True
@@ -324,17 +324,19 @@ class Script(scripts.Script):
                             break;
                         else:
                             # DEBUG
-                            if abs(subseed_strength_b - subseed_strength_a) <= seed_travel_substep_min:
-                                print(f"Reached minimum step limit @{step_keys[i]} (Skipping)   ")
-                                skip_count += 1
-                            else:
+                            if d > ssim_diff:
                                 if i > done:
-                                    print(f"Done: {i} of {len(step_keys)} ({step_keys[i]}) {len(step_keys[i:])} in queue.")
-                                    #print(f"Work: {step_keys[i:]}")
+                                    print(f"Done: {i} of {len(step_keys)} ({step_keys[i]}) ({d})")
+                            else:
+                                print(f"Reached minimum step limit @{step_keys[i]} (Skipping) SSIM = {d}  ")
+                                if skip_ssim_min > d:
+                                    skip_ssim_min = d
+                                skip_count += 1
                             done = i
                 # DEBUG
                 print("SSIM done!")
-                print(f"Minimum step limits reached: {skip_count}")
+                if skip_count > 0:
+                    print(f"Minimum step limits reached: {skip_count} Worst: {skip_ssim_min}")
 
             if save_video:
                 frames = [np.asarray(step_images[0])] * lead_inout + [np.asarray(t) for t in step_images] + [np.asarray(step_images[-1])] * lead_inout
