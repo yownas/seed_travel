@@ -285,15 +285,15 @@ class Script(scripts.Script):
 
                         seed_a, subseed_a, subseed_strength_a = step_keys[i]
                         seed_b, subseed_b, subseed_strength_b = step_keys[i+1]
+                        if subseed_strength_b == 0:
+                            subseed_strength_b = 1
+
                         if d < ssim_diff and abs(subseed_strength_b - subseed_strength_a) > substep_min:
                             # DEBUG
                             print(f"SSIM: {step_keys[i]} <-> {step_keys[i+1]} = ({subseed_strength_b - subseed_strength_a}) {d}")
 
                             # Add image and run check again
                             check = True
-
-                            if subseed_strength_b == 0:
-                                subseed_strength_b = 1
 
                             new_strength = (subseed_strength_a + subseed_strength_b)/2.0
 
