@@ -55,7 +55,7 @@ So, interpolating between the noise from two seeds will not only look cool as a 
 
 `Save results as video`: Makes videos.
 
-`SSIM CenterCrop% (0 to disable)`: Crop a square from the center of the image to be used for SSIM. In percent of the height or width (whichever is smaller). 0 will use the entire image. Only checking a small part of the image makes SSIM more sensitive. Be prepared to lower SSIM threshold to 0.4 to 0.5 if you use this.
+`SSIM CenterCrop% (0 to disable)`: Crop a piece from the center of the image to be used for SSIM. In percent of the height and width. 0 will use the entire image. Only checking a small part of the image might make SSIM more sensitive. Be prepared to lower SSIM threshold to 0.4 to 0.5 if you use this.
 
 `Frames per second`: The fps of the video.
 

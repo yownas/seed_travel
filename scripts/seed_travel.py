@@ -265,7 +265,7 @@ class Script(scripts.Script):
                 if ssim_ccrop == 0:
                     transform = transforms.Compose([transforms.ToTensor()])
                 else:
-                    transform = transforms.Compose([transforms.CenterCrop(min(tgt_w, tgt_h)*(ssim_ccrop/100)), transforms.ToTensor()])
+                    transform = transforms.Compose([transforms.CenterCrop((tgt_h*(ssim_ccrop/100), tgt_w*(ssim_ccrop/100))), transforms.ToTensor()])
 
                 check = True
                 skip_count = 0
