@@ -54,9 +54,10 @@ class Script(scripts.Script):
             ratestr = gr.Slider(label='Rate strength', value=3, minimum=0.0, maximum=10.0, step=0.1)
         allowdefsampler = gr.Checkbox(label='Allow the default Euler a Sampling method. (Does not produce good results)', value=False)
         substep_min = gr.Number(label='SSIM minimum substep', value=0.0001)
+        ssim_diff_min = gr.Slider(label='Desired min SSIM threshold (% of threshold)', value=75, minimum=0, maximum=100, step=1)
 
         return [rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, save_video, video_fps, show_images, compare_paths,
-                allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff, ssim_ccrop, substep_min]
+                allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff, ssim_ccrop, substep_min, ssim_diff_min]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -76,7 +77,7 @@ class Script(scripts.Script):
         return result + 1
 
     def run(self, p, rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, save_video, video_fps, show_images, compare_paths,
-            allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff, ssim_ccrop, substep_min):
+            allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff, ssim_ccrop, substep_min, ssim_diff_min):
         initial_info = None
         images = []
         lead_inout=int(lead_inout)
@@ -269,7 +270,9 @@ class Script(scripts.Script):
 
                 check = True
                 skip_count = 0
+                not_better = 0
                 skip_ssim_min = 1.0
+                min_step = 1.0
 
                 done = 0
                 while(check):
@@ -285,7 +288,7 @@ class Script(scripts.Script):
 
                         seed_a, subseed_a, subseed_strength_a = step_keys[i]
                         seed_b, subseed_b, subseed_strength_b = step_keys[i+1]
-                        if subseed_strength_b == 0:
+                        if subseed_strength_b == 0: # If next image is the start of a new seed...
                             subseed_strength_b = 1
 
                         if d < ssim_diff and abs(subseed_strength_b - subseed_strength_a) > substep_min:
@@ -296,13 +299,11 @@ class Script(scripts.Script):
                             check = True
 
                             new_strength = (subseed_strength_a + subseed_strength_b)/2.0
-
-                            #new_strength = (subseed_strength_a + subseed_strength_b)/2.0
-                            #key = (from_seed, to_seed, new_strength)
-
                             key = (seed_a, subseed_a, new_strength)
-
                             p.seed, p.subseed, p.subseed_strength = key
+
+                            if min_step > (subseed_strength_b - subseed_strength_a)/2.0:
+                                min_step  = (subseed_strength_b - subseed_strength_a)/2.0
 
                             # DEBUG
                             print(f"Process: {key} of {seeds}")
@@ -313,14 +314,23 @@ class Script(scripts.Script):
 
                             # upscale - copied from https://github.com/Kahsolt/stable-diffusion-webui-prompt-travel
                             if upscale_meth != 'None' and upscale_ratio != 1.0 and upscale_ratio != 0.0:
-                                image = [resize_image(0, proc.images[0], tgt_w, tgt_h, upscaler_name=upscale_meth)]
+                                image = resize_image(0, proc.images[0], tgt_w, tgt_h, upscaler_name=upscale_meth)
                             else:
-                                image = [proc.images[0]]
+                                image = proc.images[0]
 
-                            #images = images[0:i] + [image] + images[i:]
-                            # TODO use cache?
-                            step_images.insert(i+1, image[0])
-                            step_keys.insert(i+1, key)
+                            # Check if this was an improvment
+                            c = transform(image.convert('RGB')).unsqueeze(0)
+                            d2 = ssim(a, c)
+
+                            if d2 > min(d, ssim_diff*ssim_diff_min/100.0):
+                                # Image is improvment or at least better than desired min ssim_diff
+                                step_images.insert(i+1, image)
+                                step_keys.insert(i+1, key)
+                            else:
+                                print(f"Failed to find improvment: {d2} < {d} ({d-d2}) Giving up.")
+                                not_better += 1
+                                done = i + 1
+
                             break;
                         else:
                             # DEBUG
@@ -335,8 +345,7 @@ class Script(scripts.Script):
                             done = i
                 # DEBUG
                 print("SSIM done!")
-                if skip_count > 0:
-                    print(f"Minimum step limits reached: {skip_count} Worst: {skip_ssim_min}")
+                print(f"Stats: Skip count: {skip_count} Worst: {skip_ssim_min} No improvment: {not_better} Min. step: {min_step}")
 
             if save_video:
                 frames = [np.asarray(step_images[0])] * lead_inout + [np.asarray(t) for t in step_images] + [np.asarray(step_images[-1])] * lead_inout
