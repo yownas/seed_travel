@@ -322,8 +322,8 @@ class Script(scripts.Script):
                             c = transform(image.convert('RGB')).unsqueeze(0)
                             d2 = ssim(a, c)
 
-                            if d2 > min(d, ssim_diff*ssim_diff_min/100.0):
-                                # Image is improvment or at least better than desired min ssim_diff
+                            if d2 > d or d2 < ssim_diff*ssim_diff_min/100.0:
+                                # Keep image if it is improvment or hasn't reached desired min ssim_diff
                                 step_images.insert(i+1, image)
                                 step_keys.insert(i+1, key)
                             else:
