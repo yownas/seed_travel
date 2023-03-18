@@ -434,7 +434,7 @@ class Script(scripts.Script):
                     rife_images = buffer
     
                 frames = [np.asarray(rife_images[0])] * lead_inout + [np.asarray(t) for t in rife_images] + [np.asarray(rife_images[-1])] * lead_inout
-                clip = ImageSequenceClip.ImageSequenceClip(buffer, fps=video_fps)
+                clip = ImageSequenceClip.ImageSequenceClip(frames, fps=video_fps)
                 filename = f"rife-{travel_number:05}.mp4"
                 clip.write_videofile(os.path.join(travel_path, filename), verbose=False, logger=None)
             # RIFE end
