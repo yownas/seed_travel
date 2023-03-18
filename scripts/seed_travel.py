@@ -359,82 +359,84 @@ class Script(scripts.Script):
                 print(f"Stats: Skip count: {skip_count} Worst: {skip_ssim_min} No improvment: {not_better} Min. step: {min_step}")
 
             # RIFE (from https://github.com/vladmandic/rife)
-            rifemodel = None
-            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-            count = 0
-
-            def rifeload(model_path: str = os.path.dirname(os.path.abspath(__file__)) + '/rife/flownet-v46.pkl', fp16: bool = False):
-                global rifemodel # pylint: disable=global-statement
-                torch.set_grad_enabled(False)
-                if torch.cuda.is_available():
-                    torch.backends.cudnn.enabled = True
-                    torch.backends.cudnn.benchmark = True
-                    if fp16:
-                        torch.set_default_tensor_type(torch.cuda.HalfTensor)
-                rifemodel = Model()
-                rifemodel.load_model(model_path, -1)
-                rifemodel.eval()
-                rifemodel.device()
-
-            def execute(I0, I1, n):
-                global rifemodel # pylint: disable=global-statement
-                if rifemodel.version >= 3.9:
-                    res = []
-                    for i in range(n):
-                        res.append(rifemodel.inference(I0, I1, (i+1) * 1. / (n+1), scale))
-                    return res
-                else:
-                    middle = rifemodel.inference(I0, I1, scale)
-                    if n == 1:
-                        return [middle]
-                    first_half = execute(I0, middle, n=n//2)
-                    second_half = execute(middle, I1, n=n//2)
-                    if n % 2:
-                        return [*first_half, middle, *second_half]
+            if rife_passes:
+                rifemodel = None
+                device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+                count = 0
+    
+                def rifeload(model_path: str = os.path.dirname(os.path.abspath(__file__)) + '/rife/flownet-v46.pkl', fp16: bool = False):
+                    global rifemodel # pylint: disable=global-statement
+                    torch.set_grad_enabled(False)
+                    if torch.cuda.is_available():
+                        torch.backends.cudnn.enabled = True
+                        torch.backends.cudnn.benchmark = True
+                        if fp16:
+                            torch.set_default_tensor_type(torch.cuda.HalfTensor)
+                    rifemodel = Model()
+                    rifemodel.load_model(model_path, -1)
+                    rifemodel.eval()
+                    rifemodel.device()
+    
+                def execute(I0, I1, n):
+                    global rifemodel # pylint: disable=global-statement
+                    if rifemodel.version >= 3.9:
+                        res = []
+                        for i in range(n):
+                            res.append(rifemodel.inference(I0, I1, (i+1) * 1. / (n+1), scale))
+                        return res
                     else:
-                        return [*first_half, *second_half]
-
-            def pad(img):
-                return F.pad(img, padding).half() if fp16 else F.pad(img, padding)
-
-            rife_images = step_images
-
-            for i in range(int(rife_passes)):
-                print(f"RIFE pass {i+1}")
-                if rifemodel is None:
-                    rifeload()
-                print('interpolating', len(step_images), 'images')
-                frame = step_images[0]
-                w, h = tgt_w, tgt_h
-                scale = 1.0
-                fp16 = False
-
-                tmp = max(128, int(128 / scale))
-                ph = ((h - 1) // tmp + 1) * tmp
-                pw = ((w - 1) // tmp + 1) * tmp
-                padding = (0, pw - w, 0, ph - h)
-
-                buffer = []
-
-                I1 = pad(torch.from_numpy(np.transpose(frame, (2,0,1))).to(device, non_blocking=True).unsqueeze(0).float() / 255.)
-                for frame in rife_images:
-                    I0 = I1
+                        middle = rifemodel.inference(I0, I1, scale)
+                        if n == 1:
+                            return [middle]
+                        first_half = execute(I0, middle, n=n//2)
+                        second_half = execute(middle, I1, n=n//2)
+                        if n % 2:
+                            return [*first_half, middle, *second_half]
+                        else:
+                            return [*first_half, *second_half]
+    
+                def pad(img):
+                    return F.pad(img, padding).half() if fp16 else F.pad(img, padding)
+    
+                rife_images = step_images
+    
+                for i in range(int(rife_passes)):
+                    print(f"RIFE pass {i+1}")
+                    if rifemodel is None:
+                        rifeload()
+                    print('Interpolating', len(step_images), 'images')
+                    frame = step_images[0]
+                    w, h = tgt_w, tgt_h
+                    scale = 1.0
+                    fp16 = False
+    
+                    tmp = max(128, int(128 / scale))
+                    ph = ((h - 1) // tmp + 1) * tmp
+                    pw = ((w - 1) // tmp + 1) * tmp
+                    padding = (0, pw - w, 0, ph - h)
+    
+                    buffer = []
+    
                     I1 = pad(torch.from_numpy(np.transpose(frame, (2,0,1))).to(device, non_blocking=True).unsqueeze(0).float() / 255.)
-                    output = execute(I0, I1, 1)
-                    for mid in output:
-                        mid = (((mid[0] * 255.).byte().cpu().numpy().transpose(1, 2, 0)))
-                        buffer.append(np.asarray(mid[:h, :w]))
-                    if not rife_drop:
-                        buffer.append(np.asarray(frame))
-
-                #for _i in range(buffer_frames): # fill ending frames
-                #    buffer.put(frame)
-
-                rife_images = buffer
-
-            filename = f"rife-{travel_number:05}.mp4"
-            clip = ImageSequenceClip.ImageSequenceClip(buffer, fps=video_fps)
-            clip.write_videofile(os.path.join(travel_path, filename), verbose=True, logger=None)
+                    for frame in rife_images:
+                        I0 = I1
+                        I1 = pad(torch.from_numpy(np.transpose(frame, (2,0,1))).to(device, non_blocking=True).unsqueeze(0).float() / 255.)
+                        output = execute(I0, I1, 1)
+                        for mid in output:
+                            mid = (((mid[0] * 255.).byte().cpu().numpy().transpose(1, 2, 0)))
+                            buffer.append(np.asarray(mid[:h, :w]))
+                        if not rife_drop:
+                            buffer.append(np.asarray(frame))
+    
+                    #for _i in range(buffer_frames): # fill ending frames
+                    #    buffer.put(frame)
+    
+                    rife_images = buffer
+    
+                frames = [np.asarray(rife_images[0])] * lead_inout + [np.asarray(t) for t in rife_images] + [np.asarray(rife_images[-1])] * lead_inout
+                clip = ImageSequenceClip.ImageSequenceClip(buffer, fps=video_fps)
+                filename = f"rife-{travel_number:05}.mp4"
+                clip.write_videofile(os.path.join(travel_path, filename), verbose=False, logger=None)
             # RIFE end
 
             if save_video:
