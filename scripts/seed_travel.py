@@ -1,16 +1,21 @@
-import os
-import sys
-import modules.scripts as scripts
 import gradio as gr
 import math
-from torchmetrics import StructuralSimilarityIndexMeasure
-from torchvision import transforms
-import torch
+import os
+from PIL import Image
 import random
 import re
+import sys
+import torch
+from torchmetrics import StructuralSimilarityIndexMeasure
+from torchvision import transforms
+from torch.nn import functional as F
+import modules.scripts as scripts
 from modules.processing import Processed, process_images, fix_seed
 from modules.shared import opts, cmd_opts, state, sd_upscalers
 from modules.images import resize_image
+sys.path.append(os.path.dirname(os.path.abspath(__file__)))
+from rife.ssim import ssim_matlab
+from rife.RIFE_HDv3 import Model
 
 __ = lambda key, value=None: opts.data.get(f'customscript/seed_travel.py/txt2img/{key}/value', value)
 
@@ -32,32 +37,36 @@ class Script(scripts.Script):
         with gr.Row():
             rnd_seed = gr.Checkbox(label='Only use Random seeds (Unless comparing paths)', value=False)
             seed_count = gr.Number(label='Number of random seed(s)', value=4)
-        compare_paths = gr.Checkbox(label='Compare paths (Separate travels from 1st seed to each destination)', value=False)
-        steps = gr.Number(label='Steps (Number of images between each seed)', value=10)
         with gr.Row():
+            steps = gr.Number(label='Steps (Number of images between each seed)', value=10)
             loopback = gr.Checkbox(label='Loop back to initial seed', value=False)
-            ssim_diff = gr.Slider(label='SSIM threshold (0 to disable)', value=0.0, minimum=0.0, maximum=1.0, step=0.01)
         with gr.Row():
-            save_video = gr.Checkbox(label='Save results as video', value=True)
+            video_fps = gr.Number(label='Frames per second (0 to disable video)', value=30)
+            lead_inout = gr.Number(label='Number of frames for lead in/out', value=0)
+        with gr.Row():
+            ssim_diff = gr.Slider(label='SSIM threshold (0 to disable)', value=0.0, minimum=0.0, maximum=1.0, step=0.01)
             ssim_ccrop = gr.Slider(label='SSIM CenterCrop% (0 to disable)', value=0, minimum=0, maximum=100, step=1)
         with gr.Row():
-            video_fps = gr.Number(label='Frames per second', value=30)
-            lead_inout = gr.Number(label='Number of frames for lead in/out', value=0)
+            rife_passes = gr.Number(label='RIFE passes', value=0)
+            rife_drop = gr.Checkbox(label='Drop original frames', value=False)
         with gr.Row():
             upscale_meth  = gr.Dropdown(label='Upscaler',    value=lambda: DEFAULT_UPSCALE_METH, choices=CHOICES_UPSCALER)
             upscale_ratio = gr.Slider(label='Upscale ratio', value=lambda: DEFAULT_UPSCALE_RATIO, minimum=0.0, maximum=8.0, step=0.1)
-        bump_seed = gr.Slider(label='Bump seed (If > 0 do a Compare Paths but only one image. No video will be generated.)', value=0.0, minimum=0, maximum=0.5, step=0.001)
-        use_cache = gr.Checkbox(label='Use cache', value=True)
-        show_images = gr.Checkbox(label='Show generated images in ui', value=True)
         with gr.Row():
             rate = gr.Dropdown(label='Interpolation rate', value='Linear', choices=['Linear', 'Hug-the-middle', 'Slow start', 'Quick start'])
             ratestr = gr.Slider(label='Rate strength', value=3, minimum=0.0, maximum=10.0, step=0.1)
+        with gr.Row():
+            use_cache = gr.Checkbox(label='Use cache', value=True)
+            show_images = gr.Checkbox(label='Show generated images in ui', value=True)
         allowdefsampler = gr.Checkbox(label='Allow the default Euler a Sampling method. (Does not produce good results)', value=False)
+        compare_paths = gr.Checkbox(label='Compare paths (Separate travels from 1st seed to each destination)', value=False)
+        bump_seed = gr.Slider(label='Bump seed (If > 0 do a Compare Paths but only one image. No video will be generated.)', value=0.0, minimum=0, maximum=0.5, step=0.001)
         substep_min = gr.Number(label='SSIM minimum substep', value=0.0001)
         ssim_diff_min = gr.Slider(label='Desired min SSIM threshold (% of threshold)', value=75, minimum=0, maximum=100, step=1)
 
-        return [rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, save_video, video_fps, show_images, compare_paths,
-                allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff, ssim_ccrop, substep_min, ssim_diff_min]
+        return [rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, video_fps,
+                show_images, compare_paths, allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio,
+                use_cache, ssim_diff, ssim_ccrop, substep_min, ssim_diff_min, rife_passes, rife_drop]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -76,12 +85,14 @@ class Script(scripts.Script):
                 pass
         return result + 1
 
-    def run(self, p, rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, save_video, video_fps, show_images, compare_paths,
-            allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio, use_cache, ssim_diff, ssim_ccrop, substep_min, ssim_diff_min):
+    def run(self, p, rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, video_fps,
+            show_images, compare_paths, allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio,
+            use_cache, ssim_diff, ssim_ccrop, substep_min, ssim_diff_min, rife_passes, rife_drop):
         initial_info = None
         images = []
         lead_inout=int(lead_inout)
         tgt_w, tgt_h = round(p.width * upscale_ratio), round(p.height * upscale_ratio)
+        save_video = video_fps > 0
 
         # If we are just bumping seeds, ignore compare_paths and save_video
         if bump_seed > 0:
@@ -346,6 +357,85 @@ class Script(scripts.Script):
                 # DEBUG
                 print("SSIM done!")
                 print(f"Stats: Skip count: {skip_count} Worst: {skip_ssim_min} No improvment: {not_better} Min. step: {min_step}")
+
+            # RIFE (from https://github.com/vladmandic/rife)
+            rifemodel = None
+            device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+            count = 0
+
+            def rifeload(model_path: str = os.path.dirname(os.path.abspath(__file__)) + '/rife/flownet-v46.pkl', fp16: bool = False):
+                global rifemodel # pylint: disable=global-statement
+                torch.set_grad_enabled(False)
+                if torch.cuda.is_available():
+                    torch.backends.cudnn.enabled = True
+                    torch.backends.cudnn.benchmark = True
+                    if fp16:
+                        torch.set_default_tensor_type(torch.cuda.HalfTensor)
+                rifemodel = Model()
+                rifemodel.load_model(model_path, -1)
+                rifemodel.eval()
+                rifemodel.device()
+
+            def execute(I0, I1, n):
+                global rifemodel # pylint: disable=global-statement
+                if rifemodel.version >= 3.9:
+                    res = []
+                    for i in range(n):
+                        res.append(rifemodel.inference(I0, I1, (i+1) * 1. / (n+1), scale))
+                    return res
+                else:
+                    middle = rifemodel.inference(I0, I1, scale)
+                    if n == 1:
+                        return [middle]
+                    first_half = execute(I0, middle, n=n//2)
+                    second_half = execute(middle, I1, n=n//2)
+                    if n % 2:
+                        return [*first_half, middle, *second_half]
+                    else:
+                        return [*first_half, *second_half]
+
+            def pad(img):
+                return F.pad(img, padding).half() if fp16 else F.pad(img, padding)
+
+            rife_images = step_images
+
+            for i in range(int(rife_passes)):
+                print(f"RIFE pass {i+1}")
+                if rifemodel is None:
+                    rifeload()
+                print('interpolating', len(step_images), 'images')
+                frame = step_images[0]
+                w, h = tgt_w, tgt_h
+                scale = 1.0
+                fp16 = False
+
+                tmp = max(128, int(128 / scale))
+                ph = ((h - 1) // tmp + 1) * tmp
+                pw = ((w - 1) // tmp + 1) * tmp
+                padding = (0, pw - w, 0, ph - h)
+
+                buffer = []
+
+                I1 = pad(torch.from_numpy(np.transpose(frame, (2,0,1))).to(device, non_blocking=True).unsqueeze(0).float() / 255.)
+                for frame in rife_images:
+                    I0 = I1
+                    I1 = pad(torch.from_numpy(np.transpose(frame, (2,0,1))).to(device, non_blocking=True).unsqueeze(0).float() / 255.)
+                    output = execute(I0, I1, 1)
+                    for mid in output:
+                        mid = (((mid[0] * 255.).byte().cpu().numpy().transpose(1, 2, 0)))
+                        buffer.append(np.asarray(mid[:h, :w]))
+                    if not rife_drop:
+                        buffer.append(np.asarray(frame))
+
+                #for _i in range(buffer_frames): # fill ending frames
+                #    buffer.put(frame)
+
+                rife_images = buffer
+
+            filename = f"rife-{travel_number:05}.mp4"
+            clip = ImageSequenceClip.ImageSequenceClip(buffer, fps=video_fps)
+            clip.write_videofile(os.path.join(travel_path, filename), verbose=True, logger=None)
+            # RIFE end
 
             if save_video:
                 frames = [np.asarray(step_images[0])] * lead_inout + [np.asarray(t) for t in step_images] + [np.asarray(step_images[-1])] * lead_inout
