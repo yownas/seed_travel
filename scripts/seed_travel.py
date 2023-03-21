@@ -33,36 +33,37 @@ class Script(scripts.Script):
     def ui(self, is_img2img):
         seed_travel_extra = []
 
-        dest_seed = gr.Textbox(label='Destination seed(s) (Comma separated)', lines=1)
+        dest_seed = gr.Textbox(label='Destination seeds', lines=1)
         with gr.Row():
-            rnd_seed = gr.Checkbox(label='Only use Random seeds (Unless comparing paths)', value=False)
-            seed_count = gr.Number(label='Number of random seed(s)', value=4)
+            rnd_seed = gr.Checkbox(label='Use random seeds', value=False)
+            seed_count = gr.Number(label='Number of random seeds', value=4)
         with gr.Row():
-            steps = gr.Number(label='Steps (Number of images between each seed)', value=10)
+            steps = gr.Number(label='Steps', value=10)
             loopback = gr.Checkbox(label='Loop back to initial seed', value=False)
         with gr.Row():
-            video_fps = gr.Number(label='Frames per second (0 to disable video)', value=30)
-            lead_inout = gr.Number(label='Number of frames for lead in/out', value=0)
+            video_fps = gr.Number(label='FPS', value=30)
+            lead_inout = gr.Number(label='Lead in/out', value=0)
         with gr.Row():
-            ssim_diff = gr.Slider(label='SSIM threshold (0 to disable)', value=0.0, minimum=0.0, maximum=1.0, step=0.01)
-            ssim_ccrop = gr.Slider(label='SSIM CenterCrop% (0 to disable)', value=0, minimum=0, maximum=100, step=1)
+            ssim_diff = gr.Slider(label='SSIM threshold', info='0 to disable', value=0.0, minimum=0.0, maximum=1.0, step=0.01)
+            ssim_ccrop = gr.Slider(label='SSIM CenterCrop%', info='0 to disable', value=0, minimum=0, maximum=100, step=1)
         with gr.Row():
             rife_passes = gr.Number(label='RIFE passes', value=0)
             rife_drop = gr.Checkbox(label='Drop original frames', value=False)
         with gr.Row():
-            upscale_meth  = gr.Dropdown(label='Upscaler',    value=lambda: DEFAULT_UPSCALE_METH, choices=CHOICES_UPSCALER)
-            upscale_ratio = gr.Slider(label='Upscale ratio', value=lambda: DEFAULT_UPSCALE_RATIO, minimum=0.0, maximum=8.0, step=0.1)
-        with gr.Row():
             rate = gr.Dropdown(label='Interpolation rate', value='Linear', choices=['Linear', 'Hug-the-middle', 'Slow start', 'Quick start'])
             ratestr = gr.Slider(label='Rate strength', value=3, minimum=0.0, maximum=10.0, step=0.1)
-        with gr.Row():
-            use_cache = gr.Checkbox(label='Use cache', value=True)
-            show_images = gr.Checkbox(label='Show generated images in ui', value=True)
-        allowdefsampler = gr.Checkbox(label='Allow the default Euler a Sampling method. (Does not produce good results)', value=False)
-        compare_paths = gr.Checkbox(label='Compare paths (Separate travels from 1st seed to each destination)', value=False)
-        bump_seed = gr.Slider(label='Bump seed (If > 0 do a Compare Paths but only one image. No video will be generated.)', value=0.0, minimum=0, maximum=0.5, step=0.001)
-        substep_min = gr.Number(label='SSIM minimum substep', value=0.0001)
-        ssim_diff_min = gr.Slider(label='Desired min SSIM threshold (% of threshold)', value=75, minimum=0, maximum=100, step=1)
+        with gr.Accordion(label='Seed Travel Extras...', open=False):
+            with gr.Row():
+                upscale_meth  = gr.Dropdown(label='Upscaler',    value=lambda: DEFAULT_UPSCALE_METH, choices=CHOICES_UPSCALER)
+                upscale_ratio = gr.Slider(label='Upscale ratio', value=lambda: DEFAULT_UPSCALE_RATIO, minimum=0.0, maximum=8.0, step=0.1)
+            with gr.Row():
+                use_cache = gr.Checkbox(label='Use cache', value=True)
+                show_images = gr.Checkbox(label='Show generated images in ui', value=True)
+            allowdefsampler = gr.Checkbox(label='Allow default sampler', value=False)
+            compare_paths = gr.Checkbox(label='Compare paths', value=False)
+            bump_seed = gr.Slider(label='Bump seed', value=0.0, minimum=0, maximum=0.5, step=0.001)
+            substep_min = gr.Number(label='SSIM min substep', value=0.001)
+            ssim_diff_min = gr.Slider(label='SSIM min threshold', value=75, minimum=0, maximum=100, step=1)
 
         return [rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, video_fps,
                 show_images, compare_paths, allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio,
@@ -435,7 +436,7 @@ class Script(scripts.Script):
     
                 frames = [np.asarray(rife_images[0])] * lead_inout + [np.asarray(t) for t in rife_images] + [np.asarray(rife_images[-1])] * lead_inout
                 clip = ImageSequenceClip.ImageSequenceClip(frames, fps=video_fps)
-                filename = f"rife-{travel_number:05}.mp4"
+                filename = f"travel-rife-{travel_number:05}.mp4"
                 clip.write_videofile(os.path.join(travel_path, filename), verbose=False, logger=None)
             # RIFE end
 
