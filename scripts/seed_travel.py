@@ -50,7 +50,9 @@ class Script(scripts.Script):
             rife_passes = gr.Number(label='RIFE passes', value=0)
             rife_drop = gr.Checkbox(label='Drop original frames', value=False)
         with gr.Row():
-            rate = gr.Dropdown(label='Interpolation rate', value='Linear', choices=['Linear', 'Hug-the-middle', 'Slow start', 'Quick start'])
+            rate = gr.Dropdown(label='Interpolation rate', value='Linear', choices=[
+                'Linear', 'Hug-the-middle', 'Hug-the-nodes', 'Slow start', 'Quick start', 'Partial', 'Random'
+                ])
             ratestr = gr.Slider(label='Rate strength', value=3, minimum=0.0, maximum=10.0, step=0.1)
         with gr.Accordion(label='Seed Travel Extras...', open=False):
             with gr.Row():
@@ -198,12 +200,22 @@ class Script(scripts.Script):
 
                     # Calculate rate
                     if rate == "Hug-the-middle":
-                        strength = strength + (0.1 * math.sin(strength*2*math.pi))
+                        # https://www.wolframalpha.com/input?i=x%2B0.1*sin%28x*pi*2%29+from+0+to+1
+                        strength = strength + (ratestr/30.0 * math.sin(strength*2*math.pi))
+                    elif rate == "Hug-the-nodes":
+                        # https://www.wolframalpha.com/input?i=x-0.1*sin%28x*pi*2%29+from+0+to+1
+                        strength = strength - (ratestr/30.0 * math.sin(strength*2*math.pi))
                     elif rate == "Slow start":
+                        # https://www.wolframalpha.com/input?i=x%5E3+from+0+to+1
                         strength = strength**ratestr
                     elif rate == "Quick start":
+                        # https://www.wolframalpha.com/input?i=1-x%5E3+from+0+to+1
                         strength = (1-strength)**ratestr
-                    # "Linear" is default (do nothing)
+                    elif rate == "Partial":
+                        strength = strength*ratestr/10.0
+                    elif rate == "Random":
+                        strength = random.uniform(0, ratestr/10.0)
+                    # "Linear" is default (do nothing) https://www.wolframalpha.com/input?i=graph+x+from+0+to+1
 
                     key = (seed, subseed, strength)
                     generation_queue.append(key)
@@ -268,7 +280,7 @@ class Script(scripts.Script):
                     image_cache[cache_key] = image
 
             # DEBUG
-            print(f"step_keys: {step_keys}")
+            #print(f"step_keys: {step_keys}")
 
             # If SSIM > 0 and not bump_seed
             # TODO ssim step_images
