@@ -50,10 +50,10 @@ class Script(scripts.Script):
             rife_passes = gr.Number(label='RIFE passes', value=0)
             rife_drop = gr.Checkbox(label='Drop original frames', value=False)
         with gr.Row():
-            rate = gr.Dropdown(label='Interpolation rate', value='Linear', choices=[
-                'Linear', 'Hug-the-middle', 'Hug-the-nodes', 'Slow start', 'Quick start', 'Partial', 'Random'
+            curve = gr.Dropdown(label='Interpolation curve', value='Linear', choices=[
+                'Linear', 'Hug-the-middle', 'Hug-the-nodes', 'Slow start', 'Quick start', 'Easy ease in', 'Partial', 'Random'
                 ])
-            ratestr = gr.Slider(label='Rate strength', value=3, minimum=0.0, maximum=10.0, step=0.1)
+            curvestr = gr.Slider(label='Rate strength', value=3, minimum=0.0, maximum=10.0, step=0.1)
         with gr.Accordion(label='Seed Travel Extras...', open=False):
             with gr.Row():
                 upscale_meth  = gr.Dropdown(label='Upscaler',    value=lambda: DEFAULT_UPSCALE_METH, choices=CHOICES_UPSCALER)
@@ -67,7 +67,7 @@ class Script(scripts.Script):
             substep_min = gr.Number(label='SSIM min substep', value=0.001)
             ssim_diff_min = gr.Slider(label='SSIM min threshold', value=75, minimum=0, maximum=100, step=1)
 
-        return [rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, video_fps,
+        return [rnd_seed, seed_count, dest_seed, steps, curve, curvestr, loopback, video_fps,
                 show_images, compare_paths, allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio,
                 use_cache, ssim_diff, ssim_ccrop, substep_min, ssim_diff_min, rife_passes, rife_drop]
 
@@ -88,7 +88,7 @@ class Script(scripts.Script):
                 pass
         return result + 1
 
-    def run(self, p, rnd_seed, seed_count, dest_seed, steps, rate, ratestr, loopback, video_fps,
+    def run(self, p, rnd_seed, seed_count, dest_seed, steps, curve, curvestr, loopback, video_fps,
             show_images, compare_paths, allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio,
             use_cache, ssim_diff, ssim_ccrop, substep_min, ssim_diff_min, rife_passes, rife_drop):
         initial_info = None
@@ -198,23 +198,28 @@ class Script(scripts.Script):
                 for i in range(numsteps):
                     strength = float(i/float(steps))
 
-                    # Calculate rate
-                    if rate == "Hug-the-middle":
-                        # https://www.wolframalpha.com/input?i=x%2B0.1*sin%28x*pi*2%29+from+0+to+1
-                        strength = strength + (ratestr/30.0 * math.sin(strength*2*math.pi))
-                    elif rate == "Hug-the-nodes":
-                        # https://www.wolframalpha.com/input?i=x-0.1*sin%28x*pi*2%29+from+0+to+1
-                        strength = strength - (ratestr/30.0 * math.sin(strength*2*math.pi))
-                    elif rate == "Slow start":
-                        # https://www.wolframalpha.com/input?i=x%5E3+from+0+to+1
-                        strength = strength**ratestr
-                    elif rate == "Quick start":
-                        # https://www.wolframalpha.com/input?i=1-x%5E3+from+0+to+1
-                        strength = (1-strength)**ratestr
-                    elif rate == "Partial":
-                        strength = strength*ratestr/10.0
-                    elif rate == "Random":
-                        strength = random.uniform(0, ratestr/10.0)
+                    # Calculate curve
+                    if curve == "Hug-the-middle":
+                        # https://www.wolframalpha.com/input?i=graph+x%2B%28s%2F30%29*sin%28x*pi*2%29+from+0+to+1%2C+s%3D3
+                        strength = strength + (curvestr/30.0 * math.sin(strength*2*math.pi))
+                    elif curve == "Hug-the-nodes":
+                        # https://www.wolframalpha.com/input?i=graph+x-%28s%2F30%29*sin%28x*pi*2%29+from+0+to+1%2C+s%3D3
+                        strength = strength - (curvestr/30.0 * math.sin(strength*2*math.pi))
+                    elif curve == "Slow start":
+                        # https://www.wolframalpha.com/input?i=graph+x%5Es+from+0+to+1%2C+s%3D3
+                        strength = strength**curvestr
+                    elif curve == "Quick start":
+                        # https://www.wolframalpha.com/input?i=graph+%281-x%29%5Es+from+0+to+1%2C+s%3D3
+                        strength = (1-strength)**curvestr
+                    elif curve == "Easy ease in":
+                        # https://www.wolframalpha.com/input?i=graph+%281-cos%28x%5E%28s*pi%2F10%29*pi%29%29%2F2+from+0+to+1%2C+s%3D3
+                        strength = (1-math.cos(strength**(curvestr*math.pi)*math.pi))/2.0
+                    elif curve == "Partial":
+                        # "Travel" part way before switching to next seed
+                        strength = strength*curvestr/10.0
+                    elif curve == "Random":
+                        # Random flicker before switching to next seed
+                        strength = random.uniform(0, curvestr/10.0)
                     # "Linear" is default (do nothing) https://www.wolframalpha.com/input?i=graph+x+from+0+to+1
 
                     key = (seed, subseed, strength)

@@ -64,9 +64,18 @@ So, interpolating between the noise from two seeds will not only look cool as a 
 
 `Drop original frames`: Drop the original frames and only keep the RIFE-frames. Keeping the same frame count and fps as before.
 
-`Interpolation rate`: Select how the interpolation should be done. Make the changes linear, slow in the middle, at the end or in the beginning. This can be used if you want your animation to change to the beat of music or make the interpolation more interesting.
+`Interpolation curve`: Select how the interpolation should be done. See links below. This can be used if you want your animation to change to the beat of music or make the interpolation more interesting.
 
-`Rate strength`: (Only affect the "Slow start" and "Quick start" rate.) Choose how fast/slow interpolation should be done. Useful numbers are around 2 to 5. (Below 1.0 things will be very weird.)
+* [Linear](https://www.wolframalpha.com/input?i=graph+x+from+0+to+1) - Simple linear interpolation
+* [Hug-the-middle](https://www.wolframalpha.com/input?i=graph+x%2B%28s%2F30%29*sin%28x*pi*2%29+from+0+to+1%2C+s%3D3) - Pause around the middle
+* [Hug-the-nodes](https://www.wolframalpha.com/input?i=graph+x-%28s%2F30%29*sin%28x*pi*2%29+from+0+to+1%2C+s%3D3) - Pause at seed-change nodes
+* [Slow start](https://www.wolframalpha.com/input?i=graph+x%5Es+from+0+to+1%2C+s%3D3) - Starts slow and speeds up
+* [Quick start](https://www.wolframalpha.com/input?i=graph+%281-x%29%5Es+from+0+to+1%2C+s%3D3) - Starts quick and slows down
+* [Easy ease](https://www.wolframalpha.com/input?i=graph+%281-cos%28x%5E%28s*pi%2F10%29*pi%29%29%2F2+from+0+to+1%2C+s%3D3) - Pause before smooth transition
+* [Partial](https://www.wolframalpha.com/input?i=graph+x*s%2F10+from+0+to+1%2C+s%3D3) - Move only part of the way. Will create something like a slideshow with some slight movement.
+* [Random](https://www.wolframalpha.com/input?i=RandomReal%5B%7B0%2C+0.1%2A3%7D%2C+30%5D) - Random flicker before switching to next seed
+
+`Curve strength`: Choose how fast/slow interpolation should be done. Useful numbers depend on which curve you've chosen. Quickest way to check is to go to the link to WolframAlpha and try changing s=3 to what you want to try.
 
 `Seed Travel Extras...`: Accordion-block that hides options that are rarely used.
 
