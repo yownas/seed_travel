@@ -97,6 +97,8 @@ So, interpolating between the noise from two seeds will not only look cool as a 
 
 `SSIM min threshold`: Try to make new images "at least" this good (in % of SSIM threshold). By default SSIM will give up if a newly generated image is worse then the gap it is trying to fill. This will allow you to set "Steps" to something as low as 1 and not have SSIM give up just because the image halfway through was bad. Forcing it to go above the SSIM min threshold will make it avoid generating anything at all just because you had bad luck and and the "quality" dipped.
 
+`Save extra status information`: Create files with extra information.
+
 # Output
 
 The images and video (if selected) will show up in the `outputs\txt2-images\travels` folder. With a separate numbered folder for each travel you've made.

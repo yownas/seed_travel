@@ -1,5 +1,7 @@
 import gradio as gr
 import math
+import matplotlib.pyplot as plt
+import numpy as np
 import os
 from PIL import Image
 import random
@@ -66,10 +68,11 @@ class Script(scripts.Script):
             bump_seed = gr.Slider(label='Bump seed', value=0.0, minimum=0, maximum=0.5, step=0.001)
             substep_min = gr.Number(label='SSIM min substep', value=0.001)
             ssim_diff_min = gr.Slider(label='SSIM min threshold', value=75, minimum=0, maximum=100, step=1)
+            save_stats = gr.Checkbox(label='Save extra status information', value=True)
 
         return [rnd_seed, seed_count, dest_seed, steps, curve, curvestr, loopback, video_fps,
                 show_images, compare_paths, allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio,
-                use_cache, ssim_diff, ssim_ccrop, substep_min, ssim_diff_min, rife_passes, rife_drop]
+                use_cache, ssim_diff, ssim_ccrop, substep_min, ssim_diff_min, rife_passes, rife_drop, save_stats]
 
     def get_next_sequence_number(path):
         from pathlib import Path
@@ -90,7 +93,7 @@ class Script(scripts.Script):
 
     def run(self, p, rnd_seed, seed_count, dest_seed, steps, curve, curvestr, loopback, video_fps,
             show_images, compare_paths, allowdefsampler, bump_seed, lead_inout, upscale_meth, upscale_ratio,
-            use_cache, ssim_diff, ssim_ccrop, substep_min, ssim_diff_min, rife_passes, rife_drop):
+            use_cache, ssim_diff, ssim_ccrop, substep_min, ssim_diff_min, rife_passes, rife_drop, save_stats):
         initial_info = None
         images = []
         lead_inout=int(lead_inout)
@@ -117,8 +120,7 @@ class Script(scripts.Script):
             return Processed(p, images, p.seed)
 
         if not save_video and not show_images:
-            print(f"Nothing to show in gui. You will find the result in the ouyput folder.")
-            #return Processed(p, images, p.seed)
+            print(f"Nothing to show in gui. You will find the result in the output folder.")
 
         if save_video:
             import numpy as np
@@ -159,7 +161,6 @@ class Script(scripts.Script):
             s = 0          
             while (s < seed_count):
                 seeds.append(random.randint(0,2147483647))
-                #print(seeds)
                 s = s + 1
         # Manual seeds        
         else:
@@ -284,14 +285,9 @@ class Script(scripts.Script):
                 if use_cache:
                     image_cache[cache_key] = image
 
-            # DEBUG
-            #print(f"step_keys: {step_keys}")
-
             # If SSIM > 0 and not bump_seed
-            # TODO ssim step_images
             if ssim_diff > 0:
                 ssim = StructuralSimilarityIndexMeasure(data_range=1.0)
-                # transform = transforms.Compose([transforms.Resize((x/2,y/2)), transforms.ToTensor()])
                 if ssim_ccrop == 0:
                     transform = transforms.Compose([transforms.ToTensor()])
                 else:
@@ -302,6 +298,8 @@ class Script(scripts.Script):
                 not_better = 0
                 skip_ssim_min = 1.0
                 min_step = 1.0
+                ssim_stats = {}
+                ssim_stats_new = {}
 
                 done = 0
                 while(check):
@@ -331,8 +329,11 @@ class Script(scripts.Script):
                             key = (seed_a, subseed_a, new_strength)
                             p.seed, p.subseed, p.subseed_strength = key
 
+                            # SSIM stats for the new image
+                            ssim_stats_new[(step_keys[i], (step_keys[i+1][0], step_keys[i+1][1], subseed_strength_b))] = d
+
                             if min_step > (subseed_strength_b - subseed_strength_a)/2.0:
-                                min_step  = (subseed_strength_b - subseed_strength_a)/2.0
+                                min_step = (subseed_strength_b - subseed_strength_a)/2.0
 
                             # DEBUG
                             print(f"Process: {key} of {seeds}")
@@ -356,7 +357,7 @@ class Script(scripts.Script):
                                 step_images.insert(i+1, image)
                                 step_keys.insert(i+1, key)
                             else:
-                                print(f"Failed to find improvment: {d2} < {d} ({d-d2}) Giving up.")
+                                print(f"Did not find improvment: {d2} < {d} ({d-d2}) Taking shortcut.")
                                 not_better += 1
                                 done = i + 1
 
@@ -365,16 +366,54 @@ class Script(scripts.Script):
                             # DEBUG
                             if d > ssim_diff:
                                 if i > done:
-                                    print(f"Done: {i} of {len(step_keys)} ({step_keys[i]}) ({d})")
+                                    print(f"Done: {step_keys[i]} <-> {step_keys[i+1]} => ({subseed_strength_b - subseed_strength_a}) {d} ({i} of {len(step_keys)} frames)")
+
                             else:
                                 print(f"Reached minimum step limit @{step_keys[i]} (Skipping) SSIM = {d}  ")
                                 if skip_ssim_min > d:
                                     skip_ssim_min = d
                                 skip_count += 1
                             done = i
+                            ssim_stats[(step_keys[i], step_keys[i+1])] = d
+
                 # DEBUG
                 print("SSIM done!")
                 print(f"Stats: Skip count: {skip_count} Worst: {skip_ssim_min} No improvment: {not_better} Min. step: {min_step}")
+
+            # Save video before continuing with SSIM-stats and RIFE (If things crashes we will atleast have this video)
+            if save_video:
+                frames = [np.asarray(step_images[0])] * lead_inout + [np.asarray(t) for t in step_images] + [np.asarray(step_images[-1])] * lead_inout
+                clip = ImageSequenceClip.ImageSequenceClip(frames, fps=video_fps)
+                filename = f"travel-{travel_number:05}-{s:04}.mp4" if compare_paths else f"travel-{travel_number:05}.mp4"
+                clip.write_videofile(os.path.join(travel_path, filename), verbose=False, logger=None)
+
+            # SSIM-stats
+            if save_stats and ssim_diff > 0:
+                # Create scatter plot
+                x = []
+                y = []
+                for i in ssim_stats_new:
+                    s = i[1][2] - i[0][2]
+                    if s > 0:
+                        x.append(s) # step distance
+                        y.append(ssim_stats_new[i]) # ssim
+                plt.scatter(x, y, s=1, color='#ffa600')
+                x = []
+                y = []
+                for i in ssim_stats:
+                    s = i[1][2] - i[0][2]
+                    if s > 0:
+                        x.append(s) # step distance
+                        y.append(ssim_stats[i]) # ssim
+                plt.scatter(x, y, s=1, color='#003f5c')
+
+                plt.xscale('log')
+                plt.title('SSIM scatter plot')
+                plt.xlabel('Step distance')
+                plt.ylabel('SSIM')
+                filename = f"ssim_scatter-{travel_number:05}.svg"
+                plt.savefig(os.path.join(travel_path, filename))
+                plt.close()
 
             # RIFE (from https://github.com/vladmandic/rife)
             if rife_passes:
@@ -422,8 +461,8 @@ class Script(scripts.Script):
                     print(f"RIFE pass {i+1}")
                     if rifemodel is None:
                         rifeload()
-                    print('Interpolating', len(step_images), 'images')
-                    frame = step_images[0]
+                    print('Interpolating', len(rife_images), 'images')
+                    frame = rife_images[0]
                     w, h = tgt_w, tgt_h
                     scale = 1.0
                     fp16 = False
@@ -445,10 +484,8 @@ class Script(scripts.Script):
                             buffer.append(np.asarray(mid[:h, :w]))
                         if not rife_drop:
                             buffer.append(np.asarray(frame))
-    
                     #for _i in range(buffer_frames): # fill ending frames
                     #    buffer.put(frame)
-    
                     rife_images = buffer
     
                 frames = [np.asarray(rife_images[0])] * lead_inout + [np.asarray(t) for t in rife_images] + [np.asarray(rife_images[-1])] * lead_inout
@@ -456,12 +493,6 @@ class Script(scripts.Script):
                 filename = f"travel-rife-{travel_number:05}.mp4"
                 clip.write_videofile(os.path.join(travel_path, filename), verbose=False, logger=None)
             # RIFE end
-
-            if save_video:
-                frames = [np.asarray(step_images[0])] * lead_inout + [np.asarray(t) for t in step_images] + [np.asarray(step_images[-1])] * lead_inout
-                clip = ImageSequenceClip.ImageSequenceClip(frames, fps=video_fps)
-                filename = f"travel-{travel_number:05}-{s:04}.mp4" if compare_paths else f"travel-{travel_number:05}.mp4"
-                clip.write_videofile(os.path.join(travel_path, filename), verbose=False, logger=None)
 
         return Processed(p, images if show_images else [], p.seed, initial_info)
 
