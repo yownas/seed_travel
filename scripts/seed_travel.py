@@ -462,7 +462,8 @@ class Script(scripts.Script):
                 D.append('---------------------------------------\n')
                 # Generation stats
                 D.extend(['Used seeds: ', str(seeds), '\n'])
-                D.append(f"Stats: Skip count: {skip_count} Worst: {skip_ssim_min} No improvment: {not_better} Min. step: {min_step}\n")
+                if ssim_diff:
+                    D.append(f"Stats: Skip count: {skip_count} Worst: {skip_ssim_min} No improvment: {not_better} Min. step: {min_step}\n")
                 D.append(f"Frames: {len(step_images)}\n")
 
                 filename = f"seed_travel-info-{travel_number:05}.txt"
