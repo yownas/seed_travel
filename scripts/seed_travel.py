@@ -55,7 +55,7 @@ class Script(scripts.Script):
             curve = gr.Dropdown(label='Interpolation curve', value='Linear', choices=[
                 'Linear', 'Hug-the-middle', 'Hug-the-nodes', 'Slow start', 'Quick start', 'Easy ease in', 'Partial', 'Random'
                 ])
-            curvestr = gr.Slider(label='Rate strength', value=3, minimum=0.0, maximum=10.0, step=0.1)
+            curvestr = gr.Slider(label='Curve strength', value=3, minimum=0.0, maximum=10.0, step=0.1)
         with gr.Accordion(label='Seed Travel Extras...', open=False):
             with gr.Row():
                 upscale_meth  = gr.Dropdown(label='Upscaler',    value=lambda: DEFAULT_UPSCALE_METH, choices=CHOICES_UPSCALER)
@@ -164,8 +164,8 @@ class Script(scripts.Script):
                 s = s + 1
         # Manual seeds        
         else:
-            seeds = [] if p.seed == None else [p.seed]
-            seeds = seeds + [int(x.strip()) for x in dest_seed.split(",")]
+            seeds = [] if p.seed == None else [max(p.seed, random.randint(0,2147483647))]
+            seeds = seeds + [max(int(x.strip()), random.randint(0,2147483647)) for x in dest_seed.split(",")]
         p.seed = seeds[0]
 
         if bump_seed > 0:
@@ -175,6 +175,8 @@ class Script(scripts.Script):
                     break
                 p.subseed = seeds[s+1]
                 fix_seed(p)
+                seeds[s] = p.seed
+                seeds[s+1] = p.subseed
                 proc = process_images(p)
                 if initial_info is None:
                     initial_info = proc.info
@@ -194,6 +196,11 @@ class Script(scripts.Script):
                 p.seed = travel[s]
                 p.subseed = travel[s+1] if s+1 < len(travel) else travel[0]
                 fix_seed(p) # replaces None and -1 with random seeds
+                travel[s] = p.seed
+                if s+1 < len(travel):
+                    travel[s+1] = p.subseed
+                else:
+                    travel[0] = p.subseed
                 seed, subseed = p.seed, p.subseed
                 numsteps = int(steps) + (1 if s+1 == len(travel) else 0)
                 for i in range(numsteps):
@@ -406,6 +413,8 @@ class Script(scripts.Script):
                         x.append(s) # step distance
                         y.append(ssim_stats[i]) # ssim
                 plt.scatter(x, y, s=1, color='#003f5c')
+                plt.axvline(substep_min)
+                plt.axhline(ssim_diff)
 
                 plt.xscale('log')
                 plt.title('SSIM scatter plot')
@@ -414,6 +423,52 @@ class Script(scripts.Script):
                 filename = f"ssim_scatter-{travel_number:05}.svg"
                 plt.savefig(os.path.join(travel_path, filename))
                 plt.close()
+
+            # Save settings and other information
+            if save_stats:
+                D = []
+               
+                # Settings
+                D.extend(['Prompt:\n', p.prompt, '\n'])
+                D.extend(['Negative prompt:\n', p.negative_prompt, '\n'])
+                D.append('')
+                D.extend(['Width: ', str(p.width), '\n'])
+                D.extend(['Height: ', str(p.height), '\n'])
+                D.extend(['Sampler: ', p.sampler_name, '\n'])
+                D.extend(['Steps: ', str(p.steps), '\n'])
+                D.extend(['CFG scale: ', str(p.cfg_scale), '\n'])
+                D.extend(['Seed: ', str(p.seed), '\n'])
+                D.append('---------------------------------------\n')
+                # Seed Travel Settings
+                D.extend(['Destination seeds: ', dest_seed, '\n'])
+                D.extend(['Use random seeds: ', str(rnd_seed), '\n'])
+                D.extend(['Number of random seeds: ', str(int(seed_count)), '\n'])
+                D.extend(['Steps: ', str(int(steps)), '\n'])
+                D.extend(['Loop back to initial seed: ', str(loopback), '\n'])
+                D.extend(['FPS: ', str(video_fps), '\n'])
+                D.extend(['Lead in/out: ', str(int(lead_inout)), '\n'])
+                D.extend(['SSIM threshold: ', str(ssim_diff), '\n'])
+                D.extend(['SSIM CenterCrop%: ', str(ssim_ccrop), '\n'])
+                D.extend(['RIFE passes: ', str(rife_passes), '\n'])
+                D.extend(['Drop original frames: ', str(rife_drop), '\n'])
+                D.extend(['Interpolation curve: ', curve, '\n'])
+                D.extend(['Curve strength: ', str(curvestr), '\n'])
+                D.extend(['Upscaler: ', upscale_meth, '\n'])
+                D.extend(['Upscale ratio: ', str(upscale_ratio), '\n'])
+                D.extend(['Compare paths: ', str(compare_paths), '\n'])
+                D.extend(['Bump seed: ', str(bump_seed), '\n'])
+                D.extend(['SSIM min substep: ', str(substep_min), '\n'])
+                D.extend(['SSIM min threshold: ', str(ssim_diff_min), '\n'])
+                D.append('---------------------------------------\n')
+                # Generation stats
+                D.extend(['Used seeds: ', str(seeds), '\n'])
+                D.append(f"Stats: Skip count: {skip_count} Worst: {skip_ssim_min} No improvment: {not_better} Min. step: {min_step}\n")
+                D.append(f"Frames: {len(step_images)}\n")
+
+                filename = f"seed_travel-info-{travel_number:05}.txt"
+                file = open(os.path.join(travel_path, filename), 'w')
+                file.writelines(D)
+                file.close()
 
             # RIFE (from https://github.com/vladmandic/rife)
             if rife_passes:
