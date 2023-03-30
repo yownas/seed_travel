@@ -57,6 +57,7 @@ class Script(scripts.Script):
                 ])
             curvestr = gr.Slider(label='Curve strength', value=3, minimum=0.0, maximum=10.0, step=0.1)
         with gr.Accordion(label='Seed Travel Extras...', open=False):
+            gr.HTML(value='Seed Travel links: <a href=http://github.com/yownas/seed_travel/>Github</a>')
             with gr.Row():
                 upscale_meth  = gr.Dropdown(label='Upscaler',    value=lambda: DEFAULT_UPSCALE_METH, choices=CHOICES_UPSCALER)
                 upscale_ratio = gr.Slider(label='Upscale ratio', value=lambda: DEFAULT_UPSCALE_RATIO, minimum=0.0, maximum=8.0, step=0.1)
@@ -99,6 +100,12 @@ class Script(scripts.Script):
         lead_inout=int(lead_inout)
         tgt_w, tgt_h = round(p.width * upscale_ratio), round(p.height * upscale_ratio)
         save_video = video_fps > 0
+
+        def st_fixseed(seed):
+            if seed == -1:
+                return random.randint(0,2147483647)
+            else:
+                return seed
 
         # If we are just bumping seeds, ignore compare_paths and save_video
         if bump_seed > 0:
@@ -164,8 +171,8 @@ class Script(scripts.Script):
                 s = s + 1
         # Manual seeds        
         else:
-            seeds = [] if p.seed == None else [max(p.seed, random.randint(0,2147483647))]
-            seeds = seeds + [max(int(x.strip()), random.randint(0,2147483647)) for x in dest_seed.split(",")]
+            seeds = [] if p.seed == None else [st_fixseed(p.seed)]
+            seeds = seeds + [st_fixseed(int(x.strip())) for x in dest_seed.split(",")]
         p.seed = seeds[0]
 
         if bump_seed > 0:
