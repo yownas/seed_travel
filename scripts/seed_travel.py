@@ -456,7 +456,7 @@ class Script(scripts.Script):
                 D.extend(['Lead in/out: ', str(int(lead_inout)), '\n'])
                 D.extend(['SSIM threshold: ', str(ssim_diff), '\n'])
                 D.extend(['SSIM CenterCrop%: ', str(ssim_ccrop), '\n'])
-                D.extend(['RIFE passes: ', str(rife_passes), '\n'])
+                D.extend(['RIFE passes: ', str(int(rife_passes)), '\n'])
                 D.extend(['Drop original frames: ', str(rife_drop), '\n'])
                 D.extend(['Interpolation curve: ', curve, '\n'])
                 D.extend(['Curve strength: ', str(curvestr), '\n'])
