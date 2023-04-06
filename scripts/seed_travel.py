@@ -98,7 +98,10 @@ class Script(scripts.Script):
         initial_info = None
         images = []
         lead_inout=int(lead_inout)
-        tgt_w, tgt_h = round(p.width * upscale_ratio), round(p.height * upscale_ratio)
+        if upscale_meth != 'None' and upscale_ratio != 1.0 and upscale_ratio != 0.0:
+            tgt_w, tgt_h = round(p.width * upscale_ratio), round(p.height * upscale_ratio)
+        else:
+            tgt_w, tgt_h = p.width, p.height
         save_video = video_fps > 0
 
         def st_fixseed(seed):
@@ -438,7 +441,7 @@ class Script(scripts.Script):
                 # Settings
                 D.extend(['Prompt:\n', p.prompt, '\n'])
                 D.extend(['Negative prompt:\n', p.negative_prompt, '\n'])
-                D.append('')
+                D.append('\n')
                 D.extend(['Width: ', str(p.width), '\n'])
                 D.extend(['Height: ', str(p.height), '\n'])
                 D.extend(['Sampler: ', p.sampler_name, '\n'])
