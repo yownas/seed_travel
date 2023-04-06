@@ -102,7 +102,7 @@ class Script(scripts.Script):
             tgt_w, tgt_h = round(p.width * upscale_ratio), round(p.height * upscale_ratio)
         else:
             tgt_w, tgt_h = p.width, p.height
-        save_video = video_fps > 0
+        save_video = video_fps != 0
 
         def st_fixseed(seed):
             if seed == -1:
@@ -400,7 +400,8 @@ class Script(scripts.Script):
             # Save video before continuing with SSIM-stats and RIFE (If things crashes we will atleast have this video)
             if save_video:
                 frames = [np.asarray(step_images[0])] * lead_inout + [np.asarray(t) for t in step_images] + [np.asarray(step_images[-1])] * lead_inout
-                clip = ImageSequenceClip.ImageSequenceClip(frames, fps=video_fps)
+                fps = video_fps if video_fps > 0 else len(frames) / abs(video_fps)
+                clip = ImageSequenceClip.ImageSequenceClip(frames, fps=fps)
                 filename = f"travel-{travel_number:05}-{s:04}.mp4" if compare_paths else f"travel-{travel_number:05}.mp4"
                 clip.write_videofile(os.path.join(travel_path, filename), verbose=False, logger=None)
 
@@ -555,7 +556,8 @@ class Script(scripts.Script):
                     rife_images = buffer
     
                 frames = [np.asarray(rife_images[0])] * lead_inout + [np.asarray(t) for t in rife_images] + [np.asarray(rife_images[-1])] * lead_inout
-                clip = ImageSequenceClip.ImageSequenceClip(frames, fps=video_fps)
+                fps = video_fps if video_fps > 0 else len(frames) / abs(video_fps)
+                clip = ImageSequenceClip.ImageSequenceClip(frames, fps=fps)
                 filename = f"travel-rife-{travel_number:05}.mp4"
                 clip.write_videofile(os.path.join(travel_path, filename), verbose=False, logger=None)
             # RIFE end

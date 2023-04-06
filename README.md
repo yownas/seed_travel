@@ -52,7 +52,7 @@ So, interpolating between the noise from two seeds will not only look cool as a 
 
 `Loop back to Initial seed`: When reaching the end, generate images to get back to the first seed.
 
-`FPS`: The Frames Per Second of the video.
+`FPS`: The Frames Per Second of the video. It has a hidden feature where if you set this to a negative value, it will be used as the length (in seconds) of the resulting video(s).
 
 `Lead in/out`: Amount of frames to be padded with a static image at the start and ending of the video. So you'll get a short pause before the video start/ends.
 
