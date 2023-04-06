@@ -87,7 +87,7 @@ So, interpolating between the noise from two seeds will not only look cool as a 
 
 `Show generated images in ui`: Disable this if you generate a lot of steps to make life easier for your browser.
 
-`Allow default sampler`: By default Euler A is disabled since it breaks animations with more than 2 seeds. Some Samplers doesn't seem to handle Variation Seeds well, and fail when switching from one seed to another. Mostly the ones with a "a" in them. You are of course free to use them, but you might get weird skips in the animation.
+`Allow default sampler`: By default Euler A is disabled since it breaks animations with more than 2 seeds. Some Samplers doesn't seem to handle Variation Seeds well, and fail when switching from one seed to another. Mostly the ones with a "a" in them. You are of course free to use them, but you might get weird skips in the animation. If you want to try to enable this, try go into settings under `Sampler Parameters` and set `eta (noise multiplier) for ancestral samplers` to 0. This might help.
 
 `Compare paths`: Instead of traveling betwen the seeds in order, travel from the first seed to each of the other seeds. For example, "1, 2, 3, 4" would normally travel from 1 to 2, to 3 to 4. If this is enabled the script will travel from 1 to 2, 1 to 3, 1 to 4. Useful if you want to test paths.
 
