@@ -26,12 +26,6 @@ Manual install (not recommmended):
 1. Place the files from this repo in a folder in the extensions folder.
 2. Restart. Pray. It might work properly. Maybe.
 
-# Colab
-
-Seed travel should work in one of the Colab links on AUTOMATIC1111's page. But to be able to create videos you need to make sure that yoour Colab has the correct version of moviepy installed. By default version 0.2.3.5 seem to be installed, but it is easy to fix by just adding this to your code (somewhere at the top is fine). Then install Seed Travel from the Extensions tab as usual.
-
-`!pip install moviepy==1.0.3`
-
 # What is "seed traveling"?
 To understand what "seed traveling" is I first have to give a very very simplified explaination of how Stable Diffusion generates pictures.
 It starts with noise and then tweak and poke it until it gets an image that looks like something that match the prompt you gave. And to get all this initial noise you use a seed. The seed is used to generate a bunch of random numbers which will be your inital noise. A different seed generates a different set of random numbers.

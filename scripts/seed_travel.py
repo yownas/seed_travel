@@ -1,4 +1,5 @@
 import gradio as gr
+import imageio
 import math
 import matplotlib
 matplotlib.use('Agg')
@@ -134,14 +135,6 @@ class Script(scripts.Script):
 
         if not save_video and not show_images:
             print(f"Nothing to show in gui. You will find the result in the output folder.")
-
-        if save_video:
-            import numpy as np
-            try:
-                import moviepy.video.io.ImageSequenceClip as ImageSequenceClip
-            except ImportError:
-                print(f"moviepy python module not installed. Will not be able to generate video.")
-                return Processed(p, images, p.seed)
 
         # Remove seeds within () to help testing
         dest_seed = re.sub('\([^)]*\)', ',', dest_seed)
@@ -405,9 +398,11 @@ class Script(scripts.Script):
                 try:
                     frames = [np.asarray(step_images[0])] * lead_inout + [np.asarray(t) for t in step_images] + [np.asarray(step_images[-1])] * lead_inout
                     fps = video_fps if video_fps > 0 else len(frames) / abs(video_fps)
-                    clip = ImageSequenceClip.ImageSequenceClip(frames, fps=fps)
                     filename = f"travel-{travel_number:05}-{s:04}.mp4" if compare_paths else f"travel-{travel_number:05}.mp4"
-                    clip.write_videofile(os.path.join(travel_path, filename), verbose=False, logger=None)
+                    writer = imageio.get_writer(os.path.join(travel_path, filename), fps=fps, quality=8)
+                    for frame in frames:
+                        writer.append_data(frame)
+                    writer.close()
                 except:
                     print(f"ERROR: Failed generating video")
 
@@ -564,9 +559,11 @@ class Script(scripts.Script):
                 try:
                     frames = [np.asarray(rife_images[0])] * lead_inout + [np.asarray(t) for t in rife_images] + [np.asarray(rife_images[-1])] * lead_inout
                     fps = video_fps if video_fps > 0 else len(frames) / abs(video_fps)
-                    clip = ImageSequenceClip.ImageSequenceClip(frames, fps=fps)
                     filename = f"travel-rife-{travel_number:05}.mp4"
-                    clip.write_videofile(os.path.join(travel_path, filename), verbose=False, logger=None)
+                    writer = imageio.get_writer(os.path.join(travel_path, filename), fps=fps, quality=8)
+                    for frame in frames:
+                        writer.append_data(frame)
+                    writer.close()
                 except:
                     print(f"ERROR: Failed generating RIFE video")
             # RIFE end
