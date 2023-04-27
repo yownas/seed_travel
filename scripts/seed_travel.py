@@ -479,9 +479,12 @@ class Script(scripts.Script):
                 D.append(f"Frames: {len(step_images)}\n")
 
                 filename = f"seed_travel-info-{travel_number:05}.txt"
-                file = open(os.path.join(travel_path, filename), 'w')
-                file.writelines(D)
-                file.close()
+                try:
+                    file = open(os.path.join(travel_path, filename), 'w')
+                    file.writelines(D)
+                    file.close()
+                except Exception as e:
+                    print(f"ERROR: {e}")
 
             # RIFE (from https://github.com/vladmandic/rife)
             if rife_passes:
